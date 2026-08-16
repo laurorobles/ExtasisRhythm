@@ -35,6 +35,7 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     clipperButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xff222222));
     clipperAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (audioProcessor.apvts, "masterClipper", clipperButton);
 
+    // Botón de Flanger debajo de sus perillas
     addAndMakeVisible (flangerOnButton);
     flangerOnButton.setButtonText (""); flangerOnButton.setClickingTogglesState (true);
     flangerOnButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff3498db));
@@ -150,7 +151,7 @@ void ExtasisRhythmEditor::updateFillButtonVisuals (int step) {
     if (par) {
         int v = (int)(*par + 0.5f);
         fillStepButtons[step].setButtonText ("");
-        juce::Colour cols[3] = { juce::Colour(0xffe0e0e0), juce::Colour(0xff2ecc71), juce::Colour(0xff3498db) };
+        juce::Colour cols[3] = { juce::Colour(0xffe0e0e0), juce::Colour(0xff252525), juce::Colour(0xff000000) };
         fillStepButtons[step].setColour (juce::TextButton::buttonColourId, cols[v]);
     }
 }
@@ -160,16 +161,12 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g) {
     g.fillAll (juce::Colour (0xffe6e6e6));
     g.setColour (juce::Colour (0xffd4d4d4)); g.fillRect (0, 0, 1000, 115);
 
-    // Sombra paralela dibujada manualmente para dar profundidad 3D al header superior
-    g.setColour (juce::Colours::black.withAlpha (0.15f));
-    g.fillRect (0, 115, 1000, 4);
-
-    g.setFont (juce::FontOptions (24.0f, juce::Font::bold));
-    g.setColour (juce::Colours::black.withAlpha(0.2f));
-    g.drawText ("ExtasisRhythm", 17, 2, 180, 115, juce::Justification::centredLeft);
-    g.setColour (juce::Colour (0xff3498db));
+    g.setColour (juce::Colour (0xff3498db)); g.setFont (juce::FontOptions (24.0f, juce::Font::bold));
     g.drawText ("ExtasisRhythm", 15, 0, 180, 115, juce::Justification::centredLeft);
 
+    // ==========================================
+    // TÍTULOS DE MÓDULOS (7 MÓDULOS PERFECTAMENTE DISTRIBUIDOS)
+    // ==========================================
     g.setFont (juce::FontOptions (10.0f, juce::Font::bold)); g.setColour (juce::Colour (0xff111111));
     g.drawText ("HPF", 420, 2, 54, 12, juce::Justification::centred);
     g.drawText ("LPF", 494, 2, 54, 12, juce::Justification::centred);
@@ -179,6 +176,9 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g) {
     g.drawText ("SPRING", 800, 2, 54, 12, juce::Justification::centred);
     g.drawText ("MASTER", 884, 2, 78, 12, juce::Justification::centred);
 
+    // ==========================================
+    // ETIQUETAS DE CADA KNOB MAESTRO (CENTRADAS)
+    // ==========================================
     g.setFont (juce::FontOptions (8.0f, juce::Font::bold)); g.setColour (juce::Colour (0xff444444));
     g.drawText ("CUT", 420, 64, 26, 12, juce::Justification::centred);
     g.drawText ("RES", 448, 64, 26, 12, juce::Justification::centred);
@@ -195,20 +195,14 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g) {
     g.drawText ("VOL", 884, 64, 30, 12, juce::Justification::centred);
     g.drawText ("CLIP", 924, 64, 36, 12, juce::Justification::centred);
 
+    // ==========================================
+    // ETIQUETAS DE CANALES DE INSTRUMENTOS
+    // ==========================================
     juce::String labels[10] = { "BD", "SD", "CH", "OH", "CP", "CB", "RS", "HT", "MT", "LT" };
     for (int i = 0; i < 10; ++i) {
         int x = 10 + i * 96;
-        
-        // Sombra paralela en cada canal para dar separación tridimensional
-        g.setColour (juce::Colours::black.withAlpha (0.12f));
-        g.fillRect (x + 2, 117, 92, 255);
-
-        g.setColour (juce::Colour (0xfff0f0f0)); g.fillRect (x, 115, 92, 255);
-        g.setColour (juce::Colour (0xffb8b8b8)); g.drawRect ((float)x, 115.0f, 92.0f, 255.0f, 1.0f);
-        
-        g.setColour (juce::Colours::white.withAlpha(0.8f));
-        g.fillRect (x + 1, 116, 90, 2);
-
+        g.setColour (juce::Colour (0xffe0e0e0)); g.fillRect (x, 115, 92, 255);
+        g.setColour (juce::Colour (0xffcccccc)); g.drawRect ((float)x, 115.0f, 92.0f, 255.0f, 1.0f);
         g.setColour (audioProcessor.flashCounters[i].load() > 0 ? juce::Colour (0xff3498db) : juce::Colour (0xffaaaaaa));
         g.fillEllipse ((float)(x + 41), 122.0f, 10.0f, 10.0f);
         g.setColour (juce::Colour (0xff222222)); g.setFont (juce::FontOptions (12.0f, juce::Font::bold)); g.drawText (labels[i], x, 134, 92, 16, juce::Justification::centred);
@@ -221,7 +215,7 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g) {
         g.drawText ("TONE", x + 54, 252, 30, 10, juce::Justification::centred);
         g.drawText ("ATT", x + 8, 302, 30, 10, juce::Justification::centred);
         g.drawText ("DEC", x + 54, 302, 30, 10, juce::Justification::centred);
-        g.drawText ("SPRING", x + 31, 352, 30, 10, juce::Justification::centred);
+        g.drawText ("SEND", x + 31, 352, 30, 10, juce::Justification::centred);
     }
     
     g.setColour (juce::Colour (0xff222222)); g.setFont (juce::FontOptions (12.0f, juce::Font::bold));
@@ -230,12 +224,9 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g) {
     for (int i = 0; i < 10; ++i) for (int step = 0; step < 16; ++step) updateStepButtonVisuals (i, step);
     for (int step = 0; step < 16; ++step) updateFillButtonVisuals (step);
 
-    // Medidor VU LED por segmentos con floats en drawRect para evitar ambigüedad
-    g.setColour (juce::Colour (0xff111111)); 
-    g.fillRect (970, 383, 24, 269);
-    g.setColour (juce::Colour (0xff333333));
-    g.drawRect (970.0f, 383.0f, 24.0f, 269.0f, 1.0f);
-
+    // VU Meter con rango -20 dB a +3 dB
+    g.setColour (juce::Colour (0xff1a1a1a)); g.fillRect (972, 385, 10, 265); g.fillRect (986, 385, 10, 265);
+    
     auto rmsToNormalizedDb = [] (float rms) {
         if (rms <= 0.00001f) return 0.0f;
         float db = 20.0f * std::log10 (rms);
@@ -244,28 +235,11 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g) {
 
     float mL = rmsToNormalizedDb (audioProcessor.outputLevelL.load());
     float mR = rmsToNormalizedDb (audioProcessor.outputLevelR.load());
-
-    int numSegments = 24;
-    float segHeight = 261.0f / (float)numSegments;
-
-    for (int seg = 0; seg < numSegments; ++seg) {
-        float threshold = 1.0f - ((float)seg / (float)numSegments);
-        
-        juce::Colour ledColor;
-        if (threshold > 0.85f) ledColor = juce::Colour (0xffff3333);
-        else if (threshold > 0.65f) ledColor = juce::Colour (0xffffcc00);
-        else ledColor = juce::Colour (0xff2ecc71);
-
-        float yPos = 387.0f + (float)seg * segHeight;
-
-        if (mL >= threshold) g.setColour (ledColor);
-        else g.setColour (juce::Colour (0xff222222));
-        g.fillRect (973.0f, yPos, 8.0f, segHeight - 2.0f);
-
-        if (mR >= threshold) g.setColour (ledColor);
-        else g.setColour (juce::Colour (0xff222222));
-        g.fillRect (983.0f, yPos, 8.0f, segHeight - 2.0f);
-    }
+    
+    juce::ColourGradient grad (juce::Colours::red, 0, 385, juce::Colours::green, 0, 650, false); grad.addColour (0.3, juce::Colours::yellow);
+    g.setGradientFill (grad);
+    if (mL > 0.0f) g.fillRect (973, 650 - (int)(265.0f * mL), 8, (int)(265.0f * mL));
+    if (mR > 0.0f) g.fillRect (987, 650 - (int)(265.0f * mR), 8, (int)(265.0f * mR));
 
     for (int i = 0; i < 10; ++i) {
         int act = audioProcessor.channelSteps[i].load(); g.setColour (juce::Colour (0xff3498db));
@@ -285,12 +259,13 @@ void ExtasisRhythmEditor::resized() {
     saveKitButton.setBounds (sz(300, 68, 52, 20)); loadKitButton.setBounds (sz(358, 68, 52, 20));
     resetButton.setBounds (sz(330, 93, 80, 18));
 
+    // Perillas maestras posicionadas de manera limpia y simétrica
     masterHpfSlider.setBounds (sz(418, 32, 24, 28)); masterHpfResSlider.setBounds (sz(448, 32, 24, 28));
     masterLpfSlider.setBounds (sz(492, 32, 24, 28)); masterLpfResSlider.setBounds (sz(522, 32, 24, 28));
     pcmBitsSlider.setBounds (sz(566, 32, 24, 28)); pcmRateSlider.setBounds (sz(596, 32, 24, 28));
     
     flangerRateSlider.setBounds (sz(640, 32, 24, 28)); flangerFbSlider.setBounds (sz(674, 32, 24, 28));
-    flangerOnButton.setBounds (sz(660, 80, 16, 16));
+    flangerOnButton.setBounds (sz(660, 64, 16, 16)); // Botón LED On/Off debajo de los knobs de flanger
 
     transAttackSlider.setBounds (sz(724, 32, 24, 28)); transSustainSlider.setBounds (sz(754, 32, 24, 28));
     springDecaySlider.setBounds (sz(798, 32, 24, 28)); springToneSlider.setBounds (sz(828, 32, 24, 28));

@@ -98,7 +98,7 @@ void ExtasisRhythmProcessor::loadSampleForChannel (int ch, int kit) {
                 reader->read (&tempBuf, 0, numSamps, 0, true, true);
                 float peak = tempBuf.getMagnitude (0, numSamps);
                 if (peak > 0.00001f) {
-                    sampleNormGains[ch] = juce::jlimit (0.1f, 10.0f, 0.89125f / peak);
+                    sampleNormGains[ch] = juce::jlimit (0.1f, 10.0f, 0.89125f / peak); // Normalizado a -1 dB (~0.89125)
                 }
             }
             readerSources[ch] = std::make_unique<juce::AudioFormatReaderSource> (reader, true);
@@ -177,28 +177,12 @@ void ExtasisRhythmProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             stepPhase += phaseInc;
             if (stepPhase >= 1.0) {
                 stepPhase -= 1.0;
-                static int globalStep = 0;
-                globalStep = (globalStep + 1) % 16;
-                int fillVal = (int)(*apvts.getRawParameterValue ("fill_step_" + juce::String(globalStep)) + 0.5f);
-
                 for (int ch = 0; ch < 10; ++ch) {
                     int maxLen = (int) apvts.getRawParameterValue ("length" + juce::String(ch))->load();
                     int cur = channelSteps[ch].load(); int next = (cur + 1) % maxLen; channelSteps[ch] = next;
                     int stepV = (int) apvts.getRawParameterValue ("step_" + juce::String(ch) + "_" + juce::String(next))->load();
-                    
-                    bool trigger = (stepV > 0);
-                    float vel = (stepV == 1 ? 0.4f : (stepV == 2 ? 0.7f : 1.0f));
-
-                    if (fillVal > 0) {
-                        if (fillVal == 1) {
-                            if (ch == 0 || ch == 1 || ch == 2) { trigger = true; vel = 1.0f; }
-                        } else if (fillVal == 2) {
-                            if (ch == 1 || ch == 2 || ch == 7) { trigger = true; vel = 0.9f; }
-                        }
-                    }
-
-                    if (trigger) {
-                        localPos[ch] = 0.0; localVel[ch] = vel; flashCounters[ch] = 8;
+                    if (stepV > 0) {
+                        localPos[ch] = 0.0; localVel[ch] = (stepV == 1 ? 0.4f : (stepV == 2 ? 0.7f : 1.0f)); flashCounters[ch] = 8;
                     }
                 }
             }
@@ -327,6 +311,7 @@ void ExtasisRhythmProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         }
     }
 
+    // VU Meter con balística suave (RMS follower)
     float curRmsL = buffer.getRMSLevel (0, 0, buffer.getNumSamples());
     float curRmsR = buffer.getNumChannels() > 1 ? buffer.getRMSLevel (1, 0, buffer.getNumSamples()) : curRmsL;
     outputLevelL = juce::jmax (curRmsL, outputLevelL.load() * 0.8f);
@@ -337,7 +322,8 @@ bool ExtasisRhythmProcessor::hasEditor() const { return true; }
 juce::AudioProcessorEditor* ExtasisRhythmProcessor::createEditor() { return new ExtasisRhythmEditor (*this); }
 void ExtasisRhythmProcessor::getStateInformation (juce::MemoryBlock& dest) { std::unique_ptr<juce::XmlElement> xml (apvts.copyState().createXml()); if (xml) copyXmlToBinary (*xml, dest); }
 void ExtasisRhythmProcessor::setStateInformation (const void* data, int size) {
-    juce::ignoreUnused (data, size);
-    resetAllParameters(); // Siempre arranca en estado por defecto al abrir
+    std::unique_ptr<juce::XmlElement> xml (getXmlFromBinary (data, size));
+    if (xml && xml->hasTagName (apvts.state.getType())) apvts.replaceState (juce::ValueTree::fromXml (*xml));
+    else resetAllParameters();
 }
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new ExtasisRhythmProcessor(); }

@@ -1,4 +1,21 @@
+# Build directories
 build/
-ExtasisRhythm_artefacts/
-.DS_Store
-*.swp
+bin/
+obj/
+*.DS_Store
+
+# IDE specific files
+.vscode/
+.idea/
+*.xcodeproj/
+*.sln
+*.vcxproj
+*.suo
+*.user
+
+# JUCE / Binary artifacts
+juce_build/
+*.vst3
+*.component
+*.clap
+*.standalone
