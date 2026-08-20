@@ -7,58 +7,102 @@ class ExtasisRhythmProcessor : public juce::AudioProcessor {
 public:
     ExtasisRhythmProcessor();
     ~ExtasisRhythmProcessor() override;
-    void prepareToPlay (double, int) override;
+
+    void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
-#ifndef JucePlugin_PreferredChannelConfigurations
-    bool isBusesLayoutSupported (const BusesLayout&) const override;
-#endif
+    bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override;
+
     const juce::String getName() const override;
     bool acceptsMidi() const override;
     bool producesMidi() const override;
     bool isMidiEffect() const override;
     double getTailLengthSeconds() const override;
+
     int getNumPrograms() override;
     int getCurrentProgram() override;
-    void setCurrentProgram (int) override;
-    const juce::String getProgramName (int) override;
-    void changeProgramName (int, const juce::String&) override;
-    void getStateInformation (juce::MemoryBlock&) override;
-    void setStateInformation (const void*, int) override;
-    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    juce::StringArray getDrumKitNames() const;
-    void loadSampleForChannel (int, int);
-    void loadGlobalDrumKit (int);
-    void triggerChannel (int, float velocity = 1.0f);
-    void saveCustomPreset (const juce::File&);
-    void loadCustomPreset (const juce::File&);
-    void resetAllParameters();
+    void setCurrentProgram (int index) override;
+    const juce::String getProgramName (int index) override;
+    void changeProgramName (int index, const juce::String& name) override;
+
+    void getStateInformation (juce::MemoryBlock& destData) override;
+    void setStateInformation (const void* data, int sizeInBytes) override;
 
     juce::AudioProcessorValueTreeState apvts;
-    std::atomic<int> flashCounters[10];
-    std::atomic<int> channelSteps[10];
-    std::atomic<float> outputLevelL { 0.0f };
-    std::atomic<float> outputLevelR { 0.0f };
+    
+    juce::StringArray getDrumKitNames() const;
+    juce::StringArray getVariantsForChannel(int folderIndex, int ch) const;
+    void loadSampleForChannel(int ch, int folderIndex, const juce::String& fileName);
+    void loadSmartSampleForChannel(int ch, int kit);
+    void loadGlobalDrumKit(int kit);
+    void triggerChannel(int ch, float vel);
+    void killAllAudio();
+
+    void resetAllParameters();
+    void resetSequencer();
+    void changePattern(int newPattern);
+    void saveCustomPreset(const juce::File& file);
+    void loadCustomPreset(const juce::File& file);
+
+    std::atomic<float> outputLevelL{0.0f}, outputLevelR{0.0f};
+    std::atomic<int> channelSteps[12];
+    std::atomic<int> flashCounters[12];
+    
+    juce::String currentSampleName[12];
+
+    int lastHostStep = -1;
+    std::atomic<bool> hostPlaying { false };
+    std::atomic<double> hostBpm { 120.0 };
+    std::atomic<bool> isSyncedToHost { false };
+
+    std::atomic<double> samplePositions[12];
 
 private:
-    juce::AudioFormatManager formatManager;
-    std::unique_ptr<juce::AudioFormatReaderSource> readerSources[10];
-    float sampleNormGains[10] = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
-    juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> masterHpf, masterLpf;
-    juce::Reverb springReverb;
-    juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> springToneFilter;
-    std::atomic<float> channelVelocities[10];
-    std::atomic<double> samplePositions[10];
+    bool isInitialized = false;
+
+    int currentPattern = 0;
+    int savedPatterns[8][12][16];
+    int savedFills[8][16];
+    int lastSubStep[12];
+    int lastFillSubSubStep = -1;
+    double internalElapsedBeats = 0.0;
+
+    juce::File samplesFolder;
     juce::Array<juce::File> drumFolders;
+
+    juce::AudioFormatManager formatManager;
+    juce::AudioBuffer<float> sampleBuffers[12];
+    int sampleLengths[12];
+    std::atomic<float> channelVelocities[12];
+    juce::CriticalSection sampleLock;
+
     double currentSampleRate = 44100.0;
     int currentSamplesPerBlock = 512;
-    std::atomic<bool> isLoadingKits { false };
-    double stepPhase = 0.0, flangerLfoPhase = 0.0;
-    float pcmHoldSampleL = 0.0f, pcmHoldSampleR = 0.0f;
-    int pcmCounter = 0, flangerWritePos = 0;
+
+    juce::dsp::StateVariableTPTFilter<float> masterHpfL, masterHpfR;
+    juce::dsp::StateVariableTPTFilter<float> masterLpfL, masterLpfR;
+    juce::dsp::StateVariableTPTFilter<float> springToneFilterL, springToneFilterR;
+    juce::dsp::StateVariableTPTFilter<float> ratLpfL, ratLpfR;
+    juce::dsp::StateVariableTPTFilter<float> delayFeedbackLpfL, delayFeedbackLpfR;
+    juce::dsp::StateVariableTPTFilter<float> channelToneFilters[12];
+
     std::vector<float> flangerBufferL, flangerBufferR;
-    float envFastL = 0.0f, envSlowL = 0.0f, envFastR = 0.0f, envSlowR = 0.0f;
+    int flangerWritePos = 0;
+    float flangerLfoPhase = 0.0f;
+
+    std::vector<float> springDelayL[3];
+    std::vector<float> springDelayR[3];
+    juce::dsp::FirstOrderTPTFilter<float> springApL[3], springApR[3];
+    int springPos[3] = {0, 0, 0};
+
+    std::vector<float> delayBufferL, delayBufferR;
+    int delayWritePos = 0;
+    int delayBufferLength = 0;
+    float delayLfoPhase = 0.0f;
+
+    juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ExtasisRhythmProcessor)
 };
