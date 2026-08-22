@@ -1036,14 +1036,12 @@ void ExtasisRhythmEditor::updateFillLengthLabel()
 
 void ExtasisRhythmEditor::timerCallback() 
 { 
+    bool isPlaying = (audioProcessor.isSyncedToHost.load() ? audioProcessor.hostPlaying.load() 
+                                                           : (audioProcessor.apvts.getRawParameterValue("isPlaying")->load() > 0.5f));
+
     for (int i = 0; i < 12; ++i) { 
-        channelLedButtons[i]->repaint();
-        for (int step = 0; step < 32; ++step) {
-            updateStepButtonVisuals(i, step); 
-        }
-    }
-    for (int step = 0; step < 16; ++step) {
-        updateFillButtonVisuals(step);
+        if (audioProcessor.flashCounters[i].load() > 0)
+            channelLedButtons[i]->repaint();
     }
 
     float currentBits = audioProcessor.apvts.getRawParameterValue("pcmBits")->load();
@@ -1064,10 +1062,8 @@ void ExtasisRhythmEditor::timerCallback()
             playButton.setButtonText ("HOST STOP"); 
         }
     } else {
-        auto* pi = audioProcessor.apvts.getParameter ("isPlaying"); 
-        bool isP = pi && pi->getValue() > 0.5f;
-        playButton.setColour (juce::TextButton::buttonColourId, isP ? juce::Colour (0xff3498db) : juce::Colour (0xffb0b0b0)); 
-        playButton.setButtonText (isP ? "PLAYING" : "PLAY");
+        playButton.setColour (juce::TextButton::buttonColourId, isPlaying ? juce::Colour (0xff3498db) : juce::Colour (0xffb0b0b0)); 
+        playButton.setButtonText (isPlaying ? "PLAYING" : "PLAY");
     }
     repaint(); 
 }

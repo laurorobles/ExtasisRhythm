@@ -132,10 +132,31 @@ ExtasisRhythmProcessor::ExtasisRhythmProcessor()
     }
 
     if (!drumFolders.isEmpty()) loadGlobalDrumKit(defaultKitIdx);
+    initializeParameterPointers();
     isInitialized = true;
 }
 
 ExtasisRhythmProcessor::~ExtasisRhythmProcessor() {}
+
+void ExtasisRhythmProcessor::initializeParameterPointers()
+{
+    for (int i = 0; i < 12; ++i)
+    {
+        cachedLengthParams[i] = apvts.getRawParameterValue ("length" + juce::String (i));
+        for (int s = 0; s < 32; ++s)
+        {
+            cachedStepParams[i][s] = apvts.getRawParameterValue ("step_" + juce::String (i) + "_" + juce::String (s));
+        }
+    }
+    for (int s = 0; s < 16; ++s)
+    {
+        cachedFillStepParams[s] = apvts.getRawParameterValue ("fill_step_" + juce::String (s));
+    }
+    cachedFillLengthParam = apvts.getRawParameterValue ("fillLength");
+    cachedTripletFillParam = apvts.getRawParameterValue ("tripletFill");
+    cachedFillFitParam = apvts.getRawParameterValue ("fillFit");
+}
+
 const juce::String ExtasisRhythmProcessor::getName() const { return JucePlugin_Name; }
 bool ExtasisRhythmProcessor::acceptsMidi() const { return true; }
 bool ExtasisRhythmProcessor::producesMidi() const { return false; }
@@ -153,6 +174,7 @@ void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
     lastHostStep = -1; internalElapsedBeats = 0.0; lastFillSubStep = -1;
     for (int i = 0; i < 12; ++i) { lastSubStep[i] = -1; fadeOld[i] = 0.0f; channelStepSemitones[i] = 0.0f; }
     
+    initializeParameterPointers();
     killAllAudio();
 
     juce::dsp::ProcessSpec spec { sr, (uint32_t)bs, 2 };
@@ -690,7 +712,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
         if (playing) {
             for (int ch = 0; ch < 12; ++ch) {
-                int maxLen = (int) apvts.getRawParameterValue ("length" + juce::String(ch))->load();
+                int maxLen = (int) (cachedLengthParams[ch] != nullptr ? cachedLengthParams[ch]->load() : 16.0f);
                 int numSteps = chanFit[ch] ? juce::jlimit(1, 32, maxLen > 0 ? maxLen : 16) : (chanTriplet[ch] ? juce::jlimit(1, 24, maxLen > 0 ? maxLen : 12) : juce::jlimit(1, 32, maxLen > 0 ? maxLen : 16));
 
                 double mult = chanFit[ch] ? ((double)numSteps / 4.0) : (chanTriplet[ch] ? 3.0 : 4.0);
@@ -725,15 +747,15 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                     int pat = getCurrentPattern();
                     channelStepSemitones[ch] = (float)savedNotes[pat][ch][mappedStep];
 
-                    auto* stepParam = apvts.getRawParameterValue ("step_" + juce::String(ch) + "_" + juce::String(mappedStep));
-                    int stepV = (stepParam != nullptr) ? (int)(*stepParam + 0.5f) : 0;
+                    auto* stepParam = cachedStepParams[ch][mappedStep];
+                    int stepV = (stepParam != nullptr) ? (int)(stepParam->load() + 0.5f) : 0;
                     if (stepV > 0) triggerChannel(ch, (stepV == 1 ? 0.4f : (stepV == 2 ? 0.7f : 1.0f)));
                 }
             }
 
-            bool fillTriplet = apvts.getRawParameterValue("tripletFill")->load() > 0.5f;
-            bool fillFit = apvts.getRawParameterValue("fillFit")->load() > 0.5f;
-            int numFillSteps = juce::jlimit(1, 16, (int)apvts.getRawParameterValue("fillLength")->load());
+            bool fillTriplet = (cachedTripletFillParam != nullptr && cachedTripletFillParam->load() > 0.5f);
+            bool fillFit = (cachedFillFitParam != nullptr && cachedFillFitParam->load() > 0.5f);
+            int numFillSteps = juce::jlimit(1, 16, (int)(cachedFillLengthParam != nullptr ? cachedFillLengthParam->load() : 16.0f));
             
             double fillMult = fillFit ? ((double)numFillSteps / 4.0) : (fillTriplet ? 3.0 : 4.0);
             double fillSubStepD = exactBeats * fillMult; 
@@ -764,8 +786,8 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                 }
                 fillSeqPos = mappedFillStep;
 
-                auto* fillParam = apvts.getRawParameterValue ("fill_step_" + juce::String(mappedFillStep));
-                int fillV = (fillParam != nullptr) ? (int)(*fillParam + 0.5f) : 0;
+                auto* fillParam = cachedFillStepParams[mappedFillStep];
+                int fillV = (fillParam != nullptr) ? (int)(fillParam->load() + 0.5f) : 0;
                 if (fillV > 0) {
                     for (int ch = 0; ch < 12; ++ch) {
                         if (sampleLengths[ch] > 0) {
@@ -773,8 +795,8 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                             int pat = getCurrentPattern();
                             channelStepSemitones[ch] = (float)savedNotes[pat][ch][curS];
 
-                            auto* stepParam = apvts.getRawParameterValue ("step_" + juce::String(ch) + "_" + juce::String(curS));
-                            int stepV = (stepParam != nullptr) ? (int)(*stepParam + 0.5f) : 0;
+                            auto* stepParam = cachedStepParams[ch][curS];
+                            int stepV = (stepParam != nullptr) ? (int)(stepParam->load() + 0.5f) : 0;
                             if (stepV > 0) triggerChannel(ch, stepV == 1 ? 0.4f : (stepV == 2 ? 0.7f : 1.0f));
                         }
                     }
@@ -846,7 +868,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                 float finalGain = 0.35f * chanVol[i] * channelVelocities[i].load();
                 float pannedL = chOutL * std::sqrt (0.5f * (1.0f - chanPan[i])) * finalGain; 
                 float pannedR = chOutR * std::sqrt (0.5f * (1.0f + chanPan[i])) * finalGain;
-                pannedL = std::tanh(pannedL * 1.5f); pannedR = std::tanh(pannedR * 1.5f);
+                pannedL = fastTanh (pannedL * 1.5f); pannedR = fastTanh (pannedR * 1.5f);
 
                 if (i == 0) {
                     kickL += pannedL; kickR += pannedR;
@@ -869,13 +891,13 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                 l = kickHpfL.processSample(0, l); r = kickHpfR.processSample(0, r);
                 l = kickLpfL.processSample(0, l); r = kickLpfR.processSample(0, r);
                 float ratGainFactor = 1.0f + (std::pow(ratDist, 2.0f) * 100.0f);
-                l = std::tanh(l * ratGainFactor); r = std::tanh(r * ratGainFactor);
+                l = fastTanh (l * ratGainFactor); r = fastTanh (r * ratGainFactor);
                 l = kickRatLpfL.processSample(0, l) * ratVol; r = kickRatLpfR.processSample(0, r) * ratVol;
             } else {
                 l = otherHpfL.processSample(0, l); r = otherHpfR.processSample(0, r);
                 l = otherLpfL.processSample(0, l); r = otherLpfR.processSample(0, r);
                 float ratGainFactor = 1.0f + (std::pow(ratDist, 2.0f) * 100.0f);
-                l = std::tanh(l * ratGainFactor); r = std::tanh(r * ratGainFactor);
+                l = fastTanh (l * ratGainFactor); r = fastTanh (r * ratGainFactor);
                 l = otherRatLpfL.processSample(0, l) * ratVol; r = otherRatLpfR.processSample(0, r) * ratVol;
             }
         };
@@ -937,14 +959,14 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
         if (!springDelayL[0].empty()) {
             float feedback = 0.2f + springDec * 0.75f;
-            float driveL = std::tanh(reverbSendTotalL * 1.5f); float driveR = std::tanh(reverbSendTotalR * 1.5f);
+            float driveL = fastTanh (reverbSendTotalL * 1.5f); float driveR = fastTanh (reverbSendTotalR * 1.5f);
             float tankInL = springToneFilterL.processSample(0, driveL); float tankInR = springToneFilterR.processSample(0, driveR);
             float springOutL = 0.0f; float springOutR = 0.0f;
 
             for (int j = 0; j < 3; ++j) {
                 float dL = springDelayL[j][springPos[j]]; float dR = springDelayR[j][springPos[j]];
                 float apL = springApL[j].processSample(0, tankInL + dL * feedback); float apR = springApR[j].processSample(0, tankInR + dR * feedback);
-                springDelayL[j][springPos[j]] = std::tanh(apL); springDelayR[j][springPos[j]] = std::tanh(apR); springOutL += dL; springOutR += dR;
+                springDelayL[j][springPos[j]] = fastTanh (apL); springDelayR[j][springPos[j]] = fastTanh (apR); springOutL += dL; springOutR += dR;
                 springPos[j] = (springPos[j] + 1) % springDelayL[j].size();
             }
             mixedL += springOutL * 0.5f; mixedR += springOutR * 0.5f;
@@ -971,8 +993,8 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             dOutL = delayFeedbackLpfL.processSample(0, dOutL); 
             dOutR = delayFeedbackLpfR.processSample(0, dOutR);
             
-            float fbL = std::tanh(dOutL * delFb);
-            float fbR = std::tanh(dOutR * delFb);
+            float fbL = fastTanh (dOutL * delFb);
+            float fbR = fastTanh (dOutR * delFb);
             
             delayBufferL[(size_t)writeP] = delaySendTotalL + fbL; 
             delayBufferR[(size_t)writeP] = delaySendTotalR + fbR;
@@ -982,7 +1004,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         }
 
         mixedL *= (mVol * 1.4125f); mixedR *= (mVol * 1.4125f);
-        mixedL = std::tanh (mixedL / mClip) * mClip; mixedR = std::tanh (mixedR / mClip) * mClip;
+        mixedL = fastTanh (mixedL / mClip) * mClip; mixedR = fastTanh (mixedR / mClip) * mClip;
 
         if (pumpOn) {
             float envFollower = juce::jmax(std::abs(mixedL), std::abs(mixedR));
@@ -994,8 +1016,8 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         }
 
         if (masterAnalog) {
-            mixedL = std::tanh(mixedL * 1.25f) * 0.9f;
-            mixedR = std::tanh(mixedR * 1.25f) * 0.9f;
+            mixedL = fastTanh (mixedL * 1.25f) * 0.9f;
+            mixedR = fastTanh (mixedR * 1.25f) * 0.9f;
         }
         if (masterVinyl) {
             mixedL *= 0.95f; mixedR *= 0.95f;
@@ -1004,8 +1026,8 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         }
 
         if (masterAnti) {
-            mixedL = std::tanh(mixedL * 0.98f);
-            mixedR = std::tanh(mixedR * 0.98f);
+            mixedL = fastTanh (mixedL * 0.98f);
+            mixedR = fastTanh (mixedR * 0.98f);
         }
 
         if (masterLimiter) {

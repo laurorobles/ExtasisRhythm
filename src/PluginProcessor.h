@@ -142,5 +142,24 @@ private:
     float delayLfoPhase = 0.0f;
     float smoothedDelayTime = 0.0f;
 
+    // Fast DSP Saturator (Padé Rational Approximation ~5x faster than std::tanh)
+    static inline float fastTanh (float x) noexcept
+    {
+        if (x > 3.0f)  return 1.0f;
+        if (x < -3.0f) return -1.0f;
+        float x2 = x * x;
+        return x * (27.0f + x2) / (27.0f + 9.0f * x2);
+    }
+
+    // Cached raw parameter pointers to eliminate heap/string allocations in realtime processBlock
+    std::atomic<float>* cachedStepParams[12][32] = {};
+    std::atomic<float>* cachedLengthParams[12] = {};
+    std::atomic<float>* cachedFillStepParams[16] = {};
+    std::atomic<float>* cachedFillLengthParam = nullptr;
+    std::atomic<float>* cachedTripletFillParam = nullptr;
+    std::atomic<float>* cachedFillFitParam = nullptr;
+
+    void initializeParameterPointers();
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ExtasisRhythmProcessor)
 };
