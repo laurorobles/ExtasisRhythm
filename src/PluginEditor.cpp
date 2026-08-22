@@ -893,11 +893,94 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
 
     cornerResizer = std::make_unique<juce::ResizableCornerComponent> (this, getConstrainer());
     addAndMakeVisible (cornerResizer.get()); 
+
+    // License & Registration UI
+    addAndMakeVisible (licenseBadgeButton);
+    licenseBadgeButton.setLookAndFeel (&compactBtnLAF);
+    updateLicenseState();
+    licenseBadgeButton.onClick = [this]() {
+        showActivationModal = !showActivationModal;
+        licenseStatusLabel.setText ("", juce::dontSendNotification);
+        resized();
+        repaint();
+    };
+
+    addChildComponent (licenseInput);
+    licenseInput.setMultiLine (false);
+    licenseInput.setFont (juce::FontOptions (13.0f, juce::Font::bold));
+    licenseInput.setJustification (juce::Justification::centred);
+    licenseInput.setTextToShowWhenEmpty ("EXTR-XXXX-XXXX-XXXX-XXXX", juce::Colours::grey);
+    licenseInput.setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff111111));
+    licenseInput.setColour (juce::TextEditor::textColourId, juce::Colours::white);
+    licenseInput.setColour (juce::TextEditor::outlineColourId, juce::Colour (0xff00d2ff));
+
+    addChildComponent (activateButton);
+    activateButton.setLookAndFeel (&compactBtnLAF);
+    activateButton.setButtonText ("ACTIVATE LICENSE");
+    activateButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff27ae60));
+    activateButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+    activateButton.onClick = [this]() {
+        juce::String key = licenseInput.getText().trim();
+        if (LicenseManager::saveLicense (key))
+        {
+            updateLicenseState();
+            licenseStatusLabel.setText ("License Activated Successfully!", juce::dontSendNotification);
+            licenseStatusLabel.setColour (juce::Label::textColourId, juce::Colour (0xff2ecc71));
+            juce::Timer::callAfterDelay (1000, [this]() {
+                showActivationModal = false;
+                resized();
+                repaint();
+            });
+        }
+        else
+        {
+            licenseStatusLabel.setText ("Invalid Serial Key. Please check your key and try again.", juce::dontSendNotification);
+            licenseStatusLabel.setColour (juce::Label::textColourId, juce::Colour (0xffff4444));
+        }
+    };
+
+    addChildComponent (demoButton);
+    demoButton.setLookAndFeel (&compactBtnLAF);
+    demoButton.setButtonText ("CONTINUE IN DEMO MODE");
+    demoButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff444444));
+    demoButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+    demoButton.onClick = [this]() {
+        showActivationModal = false;
+        resized();
+        repaint();
+    };
+
+    addChildComponent (licenseStatusLabel);
+    licenseStatusLabel.setFont (juce::FontOptions (11.0f, juce::Font::bold));
+    licenseStatusLabel.setJustificationType (juce::Justification::centred);
+
+    if (!isActivated)
+    {
+        showActivationModal = true;
+    }
+
     setSize (1192, 812); 
     startTimerHz (30);
 }
 
 ExtasisRhythmEditor::~ExtasisRhythmEditor() = default;
+
+void ExtasisRhythmEditor::updateLicenseState()
+{
+    isActivated = LicenseManager::isLicensed();
+    if (isActivated)
+    {
+        licenseBadgeButton.setButtonText ("● LICENSED");
+        licenseBadgeButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff27ae60));
+        licenseBadgeButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+    }
+    else
+    {
+        licenseBadgeButton.setButtonText ("ACTIVATE");
+        licenseBadgeButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffe67e22));
+        licenseBadgeButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+    }
+}
 
 void ExtasisRhythmEditor::updateStepButtonVisuals (int ch, int step) 
 { 
@@ -1280,6 +1363,37 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
         g.setColour (juce::Colour (0xff2ecc71));
         g.drawRoundedRectangle (curFillBounds, 3.0f, 2.0f);
     }
+
+    if (showActivationModal)
+    {
+        g.setColour (juce::Colours::black.withAlpha (0.75f));
+        g.fillRect (0, 0, 1192, 750);
+
+        int modalW = 480;
+        int modalH = 200;
+        int modalX = (1192 - modalW) / 2;
+        int modalY = (750 - modalH) / 2;
+
+        g.setColour (juce::Colours::black.withAlpha (0.5f));
+        g.fillRoundedRectangle ((float)(modalX + 4), (float)(modalY + 4), (float)modalW, (float)modalH, 8.0f);
+
+        juce::ColourGradient bgGrad (juce::Colour (0xff2d3436), (float)modalX, (float)modalY,
+                                     juce::Colour (0xff1e272e), (float)modalX, (float)(modalY + modalH), false);
+        g.setGradientFill (bgGrad);
+        g.fillRoundedRectangle ((float)modalX, (float)modalY, (float)modalW, (float)modalH, 8.0f);
+
+        g.setColour (juce::Colour (0xff00d2ff));
+        g.drawRoundedRectangle ((float)modalX, (float)modalY, (float)modalW, (float)modalH, 8.0f, 1.5f);
+
+        g.setFont (juce::FontOptions (14.0f, juce::Font::bold));
+        g.setColour (juce::Colours::white);
+        g.drawText ("EXTASIS RHYTHM — PRODUCT ACTIVATION", modalX + 20, modalY + 16, modalW - 40, 20, juce::Justification::centred);
+
+        g.setFont (juce::FontOptions (10.5f, juce::Font::plain));
+        g.setColour (juce::Colour (0xffb2bec3));
+        g.drawText ("Enter your 16-character license key (e.g. EXTR-XXXX-XXXX-XXXX-XXXX):",
+                    modalX + 20, modalY + 42, modalW - 40, 16, juce::Justification::centred);
+    }
     
     g.restoreState();
 }
@@ -1290,6 +1404,33 @@ void ExtasisRhythmEditor::resized()
     auto sz = [s](int x, int y, int w, int h) { 
         return juce::Rectangle<int> ((int)((float)x*s), (int)((float)y*s), (int)((float)w*s), (int)((float)h*s)); 
     };
+
+    licenseBadgeButton.setBounds (sz (180, 42, 68, 16));
+
+    if (showActivationModal)
+    {
+        int modalW = 480;
+        int modalH = 200;
+        int modalX = (1192 - modalW) / 2;
+        int modalY = (750 - modalH) / 2;
+
+        licenseInput.setVisible (true);
+        activateButton.setVisible (true);
+        demoButton.setVisible (true);
+        licenseStatusLabel.setVisible (true);
+
+        licenseInput.setBounds (sz (modalX + 40, modalY + 68, modalW - 80, 26));
+        activateButton.setBounds (sz (modalX + 40, modalY + 104, 190, 26));
+        demoButton.setBounds (sz (modalX + 250, modalY + 104, 190, 26));
+        licenseStatusLabel.setBounds (sz (modalX + 20, modalY + 140, modalW - 40, 20));
+    }
+    else
+    {
+        licenseInput.setVisible (false);
+        activateButton.setVisible (false);
+        demoButton.setVisible (false);
+        licenseStatusLabel.setVisible (false);
+    }
 
     int rightMargin = 16;
     int masterW = 146;

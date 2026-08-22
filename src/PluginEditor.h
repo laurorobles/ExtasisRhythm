@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
+#include "LicenseManager.h"
 
 class StepButton : public juce::TextButton
 {
@@ -320,6 +321,18 @@ private:
     juce::Image logoImage;
     bool isSequencerVisible = true;
 
+    // License & Activation
+    bool isActivated = false;
+    bool showActivationModal = false;
+    juce::TextButton licenseBadgeButton;
+    juce::TextEditor licenseInput;
+    juce::TextButton activateButton;
+    juce::TextButton demoButton;
+    juce::TextButton closeLicenseModalButton;
+    juce::Label licenseStatusLabel;
+    juce::Label licenseInstructionsLabel;
+
+    void updateLicenseState();
     void updateStepButtonVisuals (int ch, int step);
     void updateFillButtonVisuals (int step);
     void updateLengthLabel (int i);
