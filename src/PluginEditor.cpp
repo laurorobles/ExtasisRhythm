@@ -944,13 +944,8 @@ ExtasisRhythmEditor::~ExtasisRhythmEditor() = default;
 void ExtasisRhythmEditor::updateLicenseState()
 {
     isActivated = LicenseManager::isLicensed();
-    if (isActivated)
-    {
-        licenseBadgeButton.setButtonText ("● LICENSED");
-        licenseBadgeButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff27ae60));
-        licenseBadgeButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
-    }
-    else
+    licenseBadgeButton.setVisible (!isActivated);
+    if (!isActivated)
     {
         licenseBadgeButton.setButtonText ("ACTIVATE");
         licenseBadgeButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffe67e22));
