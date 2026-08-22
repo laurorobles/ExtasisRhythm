@@ -1,0 +1,80 @@
+name: Build Extasis Rhythm (Windows & macOS)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows (x64)
+            os: windows-latest
+            artifact_name: ExtasisRhythm-Windows
+            build_type: Release
+            cmake_args: -DCMAKE_BUILD_TYPE=Release
+          - name: macOS (Universal)
+            os: macos-latest
+            artifact_name: ExtasisRhythm-macOS
+            build_type: Release
+            cmake_args: -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -G "Ninja" ${{ matrix.cmake_args }}
+
+      - name: Build Plugin & Standalone
+        run: |
+          cmake --build build --config Release --parallel
+
+      - name: Prepare Windows Artifacts
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          if [ -d "build/ExtasisRhythm_artefacts/VST3/Extasis Rhythm.vst3" ]; then
+            cp -r "build/ExtasisRhythm_artefacts/VST3/Extasis Rhythm.vst3" artifacts/
+          fi
+          if [ -d "build/ExtasisRhythm_artefacts/Release/VST3/Extasis Rhythm.vst3" ]; then
+            cp -r "build/ExtasisRhythm_artefacts/Release/VST3/Extasis Rhythm.vst3" artifacts/
+          fi
+          if [ -f "build/ExtasisRhythm_artefacts/Standalone/Extasis Rhythm.exe" ]; then
+            cp "build/ExtasisRhythm_artefacts/Standalone/Extasis Rhythm.exe" artifacts/
+          fi
+          if [ -f "build/ExtasisRhythm_artefacts/Release/Standalone/Extasis Rhythm.exe" ]; then
+            cp "build/ExtasisRhythm_artefacts/Release/Standalone/Extasis Rhythm.exe" artifacts/
+          fi
+
+      - name: Prepare macOS Artifacts
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          if [ -d "build/ExtasisRhythm_artefacts/VST3/Extasis Rhythm.vst3" ]; then
+            cp -r "build/ExtasisRhythm_artefacts/VST3/Extasis Rhythm.vst3" artifacts/
+          fi
+          if [ -d "build/ExtasisRhythm_artefacts/Standalone/Extasis Rhythm.app" ]; then
+            cp -r "build/ExtasisRhythm_artefacts/Standalone/Extasis Rhythm.app" artifacts/
+          fi
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: artifacts/

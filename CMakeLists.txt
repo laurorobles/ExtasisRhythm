@@ -1,7 +1,19 @@
 cmake_minimum_required(VERSION 3.22)
 project(ExtasisRhythm VERSION 0.1.1)
 
-add_subdirectory(JUCE)
+if(NOT TARGET juce::juce_audio_utils)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/JUCE/CMakeLists.txt")
+        add_subdirectory(JUCE)
+    else()
+        include(FetchContent)
+        FetchContent_Declare(
+            JUCE
+            GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
+            GIT_TAG 7.0.12
+        )
+        FetchContent_MakeAvailable(JUCE)
+    endif()
+endif()
 
 juce_add_binary_data(ExtasisRhythmData
     SOURCES
