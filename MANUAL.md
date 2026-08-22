@@ -224,20 +224,14 @@ El centro de control maestro y salida final:
 4. **Guardar y respaldar proyectos**:
    - Utiliza el botón **`SAVE`** para exportar tu archivo `.xml`. El archivo preserva todas las asignaciones de samples, patrones A-H, fills y configuraciones de knobs.
 
-## 10. 🔑 ACTIVACIÓN DE LICENCIA & GENERADOR DE SERIALES
+## 10. 🔑 ACTIVACIÓN DE LICENCIA
 
 Extasis Rhythm cuenta con un sistema de verificación criptográfica offline.
 * **Activación en el Plugin**:
-  1. Al iniciar el plugin por primera vez, haz clic en el botón naranja **`ACTIVATE`** en la cabecera superior.
-  2. Pega tu clave de 16 caracteres (formato: `EXTR-XXXX-XXXX-XXXX-XXXX`).
+  1. Al iniciar el plugin por primera vez o en modo demo, haz clic en el botón naranja **`ACTIVATE`** en la cabecera superior.
+  2. Pega tu clave oficial de 16 caracteres (formato: `EXTR-XXXX-XXXX-XXXX-XXXX`).
   3. Haz clic en **`ACTIVATE LICENSE`**.
-  4. Una vez activado, el botón de activación desaparece y el plugin queda permanentemente desbloqueado.
-* **Generador de Seriales (`generate_license.py`)**:
-  Para desarrolladores y administración de ventas:
-  - Generar serial individual: `python3 generate_license.py --single`
-  - Generar serial personalizado para un usuario: `python3 generate_license.py --gift "Nombre O Correo"`
-  - Generar lote de 500 seriales para Plugin Boutique / Gumroad: `python3 generate_license.py --batch 500 --output serials.txt`
-  - Verificar serial: `python3 generate_license.py --verify "EXTR-XXXX-XXXX-XXXX-XXXX"`
+  4. Una vez activado, el diálogo y el botón de activación desaparecen, y el plugin queda permanentemente desbloqueado en tu estación de trabajo.
 
 ---
 *Extasis Rhythm v2.0 — Diseñado para la creación rítmica sin límites.*

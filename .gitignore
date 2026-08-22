@@ -21,3 +21,9 @@ juce_build/
 *.component
 *.clap
 *.standalone
+
+# Private Licensing & Secrets (Local Only)
+generate_license.py
+serials*.txt
+*.key
+license*.txt

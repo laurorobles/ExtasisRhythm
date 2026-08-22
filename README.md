@@ -93,21 +93,15 @@ The compiled plugins will be generated in:
 
 ---
 
-## 🔑 License Activation & Key Generator
+---
+
+## 🔑 License Activation & Support
 
 Extasis Rhythm features an offline cryptographic license verification system. 
-To generate keys for testing, gifts, or batch store uploads:
+Upon purchase from our official store or partner marketplaces, you will receive your personal 16-character license key (`EXTR-XXXX-XXXX-XXXX-XXXX`) to unlock full permanent access.
 
-```bash
-# Generate single key:
-python3 generate_license.py --single
-
-# Generate gift key for a recipient:
-python3 generate_license.py --gift "Artist Name or Email"
-
-# Generate batch of 500 keys for Plugin Boutique / Gumroad:
-python3 generate_license.py --batch 500 --output serials.txt
-```
+- **Official Store**: [extasisrecords.bandcamp.com](https://extasisrecords.bandcamp.com)
+- **Support & Inquiries**: Contact through Extasis Records Bandcamp.
 
 ---
 
