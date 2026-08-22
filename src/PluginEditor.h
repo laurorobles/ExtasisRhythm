@@ -210,6 +210,109 @@ public:
     }
 };
 
+class ActivationOverlayComponent : public juce::Component
+{
+public:
+    std::function<void(const juce::String&)> onActivate;
+    std::function<void()> onContinueDemo;
+
+    juce::TextEditor licenseInput;
+    juce::TextButton activateButton;
+    juce::TextButton demoButton;
+    juce::Label statusLabel;
+
+    ActivationOverlayComponent()
+    {
+        addAndMakeVisible (licenseInput);
+        licenseInput.setMultiLine (false);
+        licenseInput.setFont (juce::FontOptions (13.0f, juce::Font::bold));
+        licenseInput.setJustification (juce::Justification::centred);
+        licenseInput.setTextToShowWhenEmpty ("EXTR-XXXX-XXXX-XXXX-XXXX", juce::Colour(0xff718093));
+        licenseInput.setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff14171a));
+        licenseInput.setColour (juce::TextEditor::textColourId, juce::Colours::white);
+        licenseInput.setColour (juce::TextEditor::outlineColourId, juce::Colour (0xff00d2ff));
+        licenseInput.setColour (juce::TextEditor::focusedOutlineColourId, juce::Colour (0xff3498db));
+
+        addAndMakeVisible (activateButton);
+        activateButton.setButtonText ("ACTIVATE LICENSE");
+        activateButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff27ae60));
+        activateButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+        activateButton.onClick = [this]() {
+            if (onActivate) onActivate (licenseInput.getText().trim());
+        };
+
+        addAndMakeVisible (demoButton);
+        demoButton.setButtonText ("CONTINUE IN DEMO MODE");
+        demoButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff3d3d3d));
+        demoButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+        demoButton.onClick = [this]() {
+            if (onContinueDemo) onContinueDemo();
+        };
+
+        addAndMakeVisible (statusLabel);
+        statusLabel.setFont (juce::FontOptions (11.5f, juce::Font::bold));
+        statusLabel.setJustificationType (juce::Justification::centred);
+    }
+
+    void paint (juce::Graphics& g) override
+    {
+        g.fillAll (juce::Colour (0xee0f141a));
+
+        int modalW = 500;
+        int modalH = 260;
+        int modalX = (getWidth() - modalW) / 2;
+        int modalY = (getHeight() - modalH) / 2;
+
+        g.setColour (juce::Colours::black.withAlpha (0.7f));
+        g.fillRoundedRectangle ((float)(modalX + 6), (float)(modalY + 6), (float)modalW, (float)modalH, 12.0f);
+
+        juce::ColourGradient cardGrad (juce::Colour (0xff282c34), (float)modalX, (float)modalY,
+                                       juce::Colour (0xff1c2025), (float)modalX, (float)(modalY + modalH), false);
+        g.setGradientFill (cardGrad);
+        g.fillRoundedRectangle ((float)modalX, (float)modalY, (float)modalW, (float)modalH, 12.0f);
+
+        g.setColour (juce::Colour (0xff00d2ff).withAlpha (0.9f));
+        g.drawRoundedRectangle ((float)modalX, (float)modalY, (float)modalW, (float)modalH, 12.0f, 1.5f);
+
+        g.setColour (juce::Colour (0xff21252b));
+        g.fillRoundedRectangle ((float)modalX + 1.0f, (float)modalY + 1.0f, (float)modalW - 2.0f, 44.0f, 12.0f);
+        g.fillRect ((float)modalX + 1.0f, (float)modalY + 24.0f, (float)modalW - 2.0f, 21.0f);
+        g.setColour (juce::Colour (0xff3a3f4b));
+        g.drawHorizontalLine (modalY + 45, (float)modalX, (float)(modalX + modalW));
+
+        g.setFont (juce::FontOptions (15.0f, juce::Font::bold));
+        g.setColour (juce::Colour (0xff00d2ff));
+        g.drawText ("EXTASIS RHYTHM", modalX + 20, modalY + 12, 160, 22, juce::Justification::left);
+        
+        g.setFont (juce::FontOptions (12.0f, juce::Font::plain));
+        g.setColour (juce::Colour (0xffdcdde1));
+        g.drawText ("— Product Activation", modalX + 165, modalY + 13, 200, 22, juce::Justification::left);
+
+        g.setFont (juce::FontOptions (11.5f, juce::Font::plain));
+        g.setColour (juce::Colour (0xffc8d6e5));
+        g.drawText ("Please enter your 16-character license key to unlock the full version:",
+                    modalX + 30, modalY + 58, modalW - 60, 18, juce::Justification::centred);
+
+        g.setFont (juce::FontOptions (9.5f, juce::Font::plain));
+        g.setColour (juce::Colour (0xff718093));
+        g.drawText ("extasisrecords.bandcamp.com  |  Plugin Boutique  |  Gumroad",
+                    modalX + 20, modalY + modalH - 24, modalW - 40, 16, juce::Justification::centred);
+    }
+
+    void resized() override
+    {
+        int modalW = 500;
+        int modalH = 260;
+        int modalX = (getWidth() - modalW) / 2;
+        int modalY = (getHeight() - modalH) / 2;
+
+        licenseInput.setBounds (modalX + 45, modalY + 86, modalW - 90, 32);
+        activateButton.setBounds (modalX + 45, modalY + 130, 195, 32);
+        demoButton.setBounds (modalX + 260, modalY + 130, 195, 32);
+        statusLabel.setBounds (modalX + 30, modalY + 172, modalW - 60, 24);
+    }
+};
+
 class ExtasisRhythmEditor  : public juce::AudioProcessorEditor,
                              public juce::Timer
 {
@@ -325,12 +428,7 @@ private:
     bool isActivated = false;
     bool showActivationModal = false;
     juce::TextButton licenseBadgeButton;
-    juce::TextEditor licenseInput;
-    juce::TextButton activateButton;
-    juce::TextButton demoButton;
-    juce::TextButton closeLicenseModalButton;
-    juce::Label licenseStatusLabel;
-    juce::Label licenseInstructionsLabel;
+    ActivationOverlayComponent activationOverlay;
 
     void updateLicenseState();
     void updateStepButtonVisuals (int ch, int step);
