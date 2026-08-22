@@ -3,6 +3,11 @@ project(ExtasisRhythm VERSION 0.1.1)
 
 add_subdirectory(JUCE)
 
+juce_add_binary_data(ExtasisRhythmData
+    SOURCES
+        assets/logo.png
+)
+
 juce_add_plugin(ExtasisRhythm
     COMPANY_NAME "Extasis Records"
     BUNDLE_ID "com.laurorobles.ExtasisRhythm"
@@ -16,6 +21,9 @@ juce_add_plugin(ExtasisRhythm
     FORMATS VST3 Standalone
     COPY_PLUGIN_AFTER_BUILD TRUE
     PRODUCT_NAME "Extasis Rhythm")
+
+# Genera automáticamente el JuceHeader.h requerido por JUCE con CMake
+juce_generate_juce_header(ExtasisRhythm)
 
 target_sources(ExtasisRhythm PRIVATE
     src/PluginProcessor.cpp
@@ -31,6 +39,7 @@ target_compile_definitions(ExtasisRhythm PRIVATE
 )
 
 target_link_libraries(ExtasisRhythm PRIVATE
+    ExtasisRhythmData
     juce::juce_audio_utils
     juce::juce_dsp
     juce::juce_gui_extra

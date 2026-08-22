@@ -1,5 +1,6 @@
 # Build directories
 build/
+build-mac/
 bin/
 obj/
 *.DS_Store
@@ -7,6 +8,7 @@ obj/
 # IDE specific files
 .vscode/
 .idea/
+.continue/
 *.xcodeproj/
 *.sln
 *.vcxproj
