@@ -44,6 +44,7 @@ Ubicada en la parte superior izquierda de la interfaz, gobierna el transporte gl
 * **`STOP` (Rojo)**: Detiene el transporte inmediatamente y silencia las colas de reproducción.
 * **`BPM` (Bar Slider)**: Ajusta el tempo interno de 20.0 a 300.0 BPM (con precisión decimal). Si el DAW está en reproducción, hereda el tempo maestro del proyecto.
 * **`GLOBAL KIT SELECTOR` (Menú Desplegable)**: Carga una colección completa de 12 sonidos curados (kits vintage, cajas legendarias, acústicas, electrónicas, etc.) de la carpeta de muestras.
+* **`📁` (Browse Samples Folder)**: Botón de explorador para seleccionar una carpeta personalizada de samples en cualquier disco duro. Por defecto busca en `Documentos/ExtasisRhythm_Samples`, pero recuerda tu carpeta personalizada de forma persistente.
 * **`RANDOM` (Botón Naranja)**: Genera combinaciones aleatorias e inteligentes de muestras explorando carpetas y variantes para disparar la creatividad instantánea.
 * **`SAVE` (Verde)**: Abre un explorador de archivos para guardar el estado completo del proyecto, kits, patrones, notas y efectos en un archivo `.xml` propietario.
 * **`LOAD` (Naranja Oscuro)**: Carga presets y proyectos `.xml` previamente guardados.

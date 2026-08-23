@@ -88,9 +88,7 @@ ExtasisRhythmProcessor::ExtasisRhythmProcessor()
       apvts (*this, nullptr, "APVTS", createParameterLayout()) {
     
     formatManager.registerBasicFormats();
-    samplesFolder = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("ExtasisRhythm_Samples");
-    samplesFolder.findChildFiles (drumFolders, juce::File::findDirectories, false);
-    drumFolders.sort();
+    scanSampleFolders();
     
     for (int p=0; p<8; ++p) {
         for (int i=0; i<12; ++i) {
@@ -137,6 +135,78 @@ ExtasisRhythmProcessor::ExtasisRhythmProcessor()
 }
 
 ExtasisRhythmProcessor::~ExtasisRhythmProcessor() {}
+
+juce::File ExtasisRhythmProcessor::getConfigFile()
+{
+#if JUCE_MAC
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+        .getChildFile ("Application Support")
+        .getChildFile ("ExtasisRhythm")
+        .getChildFile ("settings.xml");
+#else
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+        .getChildFile ("ExtasisRhythm")
+        .getChildFile ("settings.xml");
+#endif
+}
+
+void ExtasisRhythmProcessor::scanSampleFolders()
+{
+    drumFolders.clear();
+
+    // 1. Check persistent custom folder
+    auto cfg = getConfigFile();
+    if (cfg.existsAsFile())
+    {
+        if (auto xml = juce::parseXML (cfg))
+        {
+            auto customPath = xml->getStringAttribute ("samplesFolderPath");
+            if (customPath.isNotEmpty())
+            {
+                juce::File customDir (customPath);
+                if (customDir.isDirectory())
+                    samplesFolder = customDir;
+            }
+        }
+    }
+
+    // 2. Default search in Documents if not custom
+    if (!samplesFolder.isDirectory())
+    {
+        auto docs = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory);
+        auto f1 = docs.getChildFile ("ExtasisRhythm_Samples");
+        auto f2 = docs.getChildFile ("ExtasisRhythm_samples");
+        auto f3 = docs.getChildFile ("ExtasisRhythm Samples");
+        if (f1.isDirectory()) samplesFolder = f1;
+        else if (f2.isDirectory()) samplesFolder = f2;
+        else if (f3.isDirectory()) samplesFolder = f3;
+        else samplesFolder = f1;
+    }
+
+    if (samplesFolder.isDirectory())
+    {
+        samplesFolder.findChildFiles (drumFolders, juce::File::findDirectories, false);
+        drumFolders.sort();
+    }
+}
+
+void ExtasisRhythmProcessor::setSamplesFolder (const juce::File& folder)
+{
+    if (folder.isDirectory())
+    {
+        samplesFolder = folder;
+        auto cfg = getConfigFile();
+        cfg.getParentDirectory().createDirectory();
+
+        juce::XmlElement xml ("SETTINGS");
+        xml.setAttribute ("samplesFolderPath", folder.getFullPathName());
+        xml.writeTo (cfg);
+
+        scanSampleFolders();
+        if (!drumFolders.isEmpty())
+            loadGlobalDrumKit (0);
+    }
+}
 
 void ExtasisRhythmProcessor::initializeParameterPointers()
 {

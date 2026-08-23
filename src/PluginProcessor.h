@@ -44,6 +44,10 @@ public:
     void loadGlobalDrumKit (int kit);
     void randomizeKit();
 
+    void scanSampleFolders();
+    void setSamplesFolder (const juce::File& folder);
+    static juce::File getConfigFile();
+
     void triggerChannel (int ch, float vel);
     void killAllAudio();
     void resetAllParameters();

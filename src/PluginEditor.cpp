@@ -337,6 +337,29 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
         }
     };
 
+    addAndMakeVisible (browseFolderButton);
+    browseFolderButton.setButtonText (juce::CharPointer_UTF8 ("\xf0\x9f\x93\x81")); // 📁
+    browseFolderButton.setTooltip ("Select Custom Samples Folder (Default: Documents/ExtasisRhythm_Samples)");
+    browseFolderButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff34495e));
+    browseFolderButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+    browseFolderButton.onClick = [this] {
+        folderChooser = std::make_unique<juce::FileChooser> (
+            "Select Custom Samples Folder",
+            audioProcessor.samplesFolder.isDirectory() ? audioProcessor.samplesFolder : juce::File::getSpecialLocation (juce::File::userDocumentsDirectory),
+            "*"
+        );
+        folderChooser->launchAsync (
+            juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+            [this] (const juce::FileChooser& fc) {
+                auto result = fc.getResult();
+                if (result.isDirectory()) {
+                    audioProcessor.setSamplesFolder (result);
+                    refreshKitSelectors();
+                }
+            }
+        );
+    };
+
     for (int p = 0; p < 4; ++p) {
         addAndMakeVisible (patternPageButtons[p]);
         patternPageButtons[p].setButtonText (juce::String (p + 1));
@@ -953,6 +976,26 @@ void ExtasisRhythmEditor::updateLicenseState()
     }
 }
 
+void ExtasisRhythmEditor::refreshKitSelectors()
+{
+    globalKitSelector.clear (juce::dontSendNotification);
+    auto kitNames = audioProcessor.getDrumKitNames();
+    globalKitSelector.addItemList (kitNames, 1);
+    globalKitSelector.setSelectedId (1, juce::dontSendNotification);
+
+    for (int i = 0; i < 12; ++i) {
+        sampleSourceSelectors[i].clear (juce::dontSendNotification);
+        sampleSourceSelectors[i].addItemList (kitNames, 1);
+        sampleSourceSelectors[i].setSelectedId (1, juce::dontSendNotification);
+
+        sampleVariantSelectors[i].clear (juce::dontSendNotification);
+        auto variants = audioProcessor.getVariantsForChannel (0, i);
+        sampleVariantSelectors[i].addItemList (variants, 1);
+        int matchIdx = variants.indexOf (audioProcessor.currentSampleName[i]);
+        sampleVariantSelectors[i].setSelectedId (matchIdx >= 0 ? matchIdx + 1 : 1, juce::dontSendNotification);
+    }
+}
+
 void ExtasisRhythmEditor::updateStepButtonVisuals (int ch, int step) 
 { 
     auto* par = audioProcessor.apvts.getRawParameterValue ("step_" + juce::String(ch) + "_" + juce::String(step)); 
@@ -1365,7 +1408,8 @@ void ExtasisRhythmEditor::resized()
     resetButton.setBounds (sz(controlsX, 42, 60, 24)); 
     seqResetButton.setBounds (sz(controlsX + 64, 42, 60, 24));
     bpmSlider.setBounds (sz(controlsX, 70, 124, 24)); 
-    globalKitSelector.setBounds (sz(controlsX, 100, 124, 22));
+    globalKitSelector.setBounds (sz(controlsX, 100, 98, 22)); 
+    browseFolderButton.setBounds (sz(controlsX + 101, 100, 23, 22));
     randomKitButton.setBounds (sz(controlsX, 128, 70, 24));
     seqToggleViewButton.setBounds (sz(controlsX + 74, 128, 50, 24));
 

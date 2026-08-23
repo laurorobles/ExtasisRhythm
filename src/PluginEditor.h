@@ -344,9 +344,12 @@ private:
 
     juce::ComboBox globalKitSelector;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> globalKitAtt;
-    juce::TextButton saveKitButton, loadKitButton, randomKitButton;
+    juce::TextButton saveKitButton, loadKitButton, randomKitButton, browseFolderButton;
     std::unique_ptr<juce::FileChooser> saveChooser;
     std::unique_ptr<juce::FileChooser> loadChooser;
+    std::unique_ptr<juce::FileChooser> folderChooser;
+
+    void refreshKitSelectors();
 
     juce::TextButton patternButtons[8];
     juce::TextButton patternPageButtons[4];
