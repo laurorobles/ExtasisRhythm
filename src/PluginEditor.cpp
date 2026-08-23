@@ -1137,15 +1137,26 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
         auto logoRect = juce::Rectangle<float> (35.0f, 78.0f, 120.0f, 88.0f);
         auto placement = juce::RectanglePlacement::centred | juce::RectanglePlacement::onlyReduceInSize;
 
-        // Multi-layered realistic contour drop shadow
-        g.setColour (juce::Colours::black.withAlpha (0.12f));
-        g.drawImage (logoImage, logoRect.translated (0.0f, 5.0f), placement, true);
-        g.setColour (juce::Colours::black.withAlpha (0.22f));
-        g.drawImage (logoImage, logoRect.translated (0.0f, 3.0f), placement, true);
-        g.setColour (juce::Colours::black.withAlpha (0.35f));
-        g.drawImage (logoImage, logoRect.translated (0.0f, 1.5f), placement, true);
+        float cx = logoRect.getCentreX();
+        float cy = logoRect.getCentreY();
 
-        // Foreground crisp logo
+        // 1. Soft outer ambient drop shadow
+        g.setColour (juce::Colours::black.withAlpha (0.18f));
+        g.fillEllipse (cx - 43.0f, cy - 31.0f + 4.0f, 86.0f, 68.0f);
+        g.setColour (juce::Colours::black.withAlpha (0.10f));
+        g.fillEllipse (cx - 46.0f, cy - 33.0f + 6.0f, 92.0f, 72.0f);
+
+        // 2. Pure luminous white underlay to keep logo colors 100% bright and saturated
+        juce::ColourGradient bgGrad (juce::Colours::white.withAlpha (0.95f), cx, cy - 15.0f,
+                                     juce::Colour (0xfff0f4f8).withAlpha (0.88f), cx, cy + 25.0f, false);
+        g.setGradientFill (bgGrad);
+        g.fillEllipse (cx - 41.0f, cy - 31.0f, 82.0f, 64.0f);
+        
+        // Subtle glowing cyan accent border
+        g.setColour (juce::Colour (0xff00d2ff).withAlpha (0.35f));
+        g.drawEllipse (cx - 41.0f, cy - 31.0f, 82.0f, 64.0f, 1.2f);
+
+        // 3. Foreground crisp, vibrant logo
         g.drawImage (logoImage, logoRect, placement, false);
     }
 
