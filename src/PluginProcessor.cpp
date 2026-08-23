@@ -270,67 +270,47 @@ bool ExtasisRhythmProcessor::isBusesLayoutSupported (const BusesLayout& layouts)
 
 int ExtasisRhythmProcessor::getChannelForMidiNote (int noteNum)
 {
-    // General MIDI (GM) Standard Percussion Mapping
-    switch (noteNum)
-    {
-        case 35: // Acoustic Bass Drum
-        case 36: return 0;  // Bass Drum 1 (Kick)
+    // Primary Octave: C3 (60) to B3 (71)
+    // Ch 0 (Kick): C3 (60), Ch 1 (Snare): C#3 (61), Ch 2 (Closed Hat): D3 (62), etc.
+    if (noteNum >= 60 && noteNum <= 71)
+        return noteNum - 60;
 
-        case 38: // Acoustic Snare
-        case 40: return 1;  // Electric Snare
-        
-        case 42: // Closed Hi-Hat
-        case 44: return 2;  // Pedal Hi-Hat
+    // Octave Fallbacks:
+    // C2 (48) to B2 (59)
+    if (noteNum >= 48 && noteNum <= 59)
+        return noteNum - 48;
 
-        case 46: return 3;  // Open Hi-Hat
-
-        case 39: return 4;  // Hand Clap
-
-        case 37: return 5;  // Side Stick / Rimshot
-
-        case 48: // Hi-Mid Tom
-        case 50: return 6;  // High Tom / Hi Perc
-
-        case 45: // Low Tom
-        case 47: return 7;  // Low-Mid Tom / Mid Perc
-
-        case 41: // Low Floor Tom
-        case 43: return 8;  // High Floor Tom / Low Perc
-
-        case 56: return 9;  // Cowbell
-
-        case 49: // Crash Cymbal 1
-        case 57: return 10; // Crash Cymbal 2
-
-        case 51: // Ride Cymbal 1
-        case 59: return 11; // Ride Cymbal 2
-    }
-
-    // Chromatic fallback for 12-pad drum controllers (C1 = 36 to B1 = 47)
+    // C1 (36) to B1 (47)
     if (noteNum >= 36 && noteNum <= 47)
         return noteNum - 36;
 
-    // Octave up chromatic fallback (C2 = 48 to B2 = 59)
-    if (noteNum >= 48 && noteNum <= 59)
-        return noteNum - 48;
+    // General MIDI Drum Map legacy fallback
+    switch (noteNum)
+    {
+        case 35: return 0;  // Acoustic Bass Drum
+        case 40: return 1;  // Electric Snare
+        case 44: return 2;  // Pedal Hi-Hat
+        case 57: return 10; // Crash 2
+        case 59: return 11; // Ride 2
+    }
 
     return -1;
 }
 
 int ExtasisRhythmProcessor::getMidiNoteForChannel (int ch)
 {
-    static const int gmNotes[12] = { 36, 38, 42, 46, 39, 37, 50, 47, 41, 56, 49, 51 };
-    if (ch >= 0 && ch < 12) return gmNotes[ch];
-    return 36;
+    // 12 channels chromatically starting at C3 (MIDI note 60)
+    if (ch >= 0 && ch < 12) return 60 + ch;
+    return 60;
 }
 
 juce::String ExtasisRhythmProcessor::getMidiNoteNameForChannel (int ch)
 {
-    static const char* noteNames[12] = { "C1 (36)", "D1 (38)", "F#1 (42)", "A#1 (46)", 
-                                         "D#1 (39)", "C#1 (37)", "D2 (50)", "B1 (47)", 
-                                         "F1 (41)", "G#2 (56)", "C#2 (49)", "D#2 (51)" };
+    static const char* noteNames[12] = { "C3 (60)", "C#3 (61)", "D3 (62)", "D#3 (63)", 
+                                         "E3 (64)", "F3 (65)", "F#3 (66)", "G3 (67)", 
+                                         "G#3 (68)", "A3 (69)", "A#3 (70)", "B3 (71)" };
     if (ch >= 0 && ch < 12) return noteNames[ch];
-    return "C1";
+    return "C3";
 }
 
 void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {

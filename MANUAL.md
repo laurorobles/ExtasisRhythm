@@ -254,23 +254,23 @@ Extasis Rhythm cuenta con un bus principal estéreo (**Master Bus**) y **12 buse
 
 ---
 
-### B. Mapeo MIDI Estándar (General MIDI Drum Map)
+### B. Mapeo MIDI Cromático (C3 a B3) y Disparo de Canales
 Puedes disparar y grabar las 12 voces de Extasis Rhythm desde cualquier controlador MIDI, teclado, MPC, Launchpad o Ableton Push:
 
-| Canal | Instrumento | Nota MIDI (GM) | Número de Nota | Alternativa Cromática |
-| :--- | :--- | :--- | :--- | :--- |
-| **Ch 1** | **KICK** | `C1` / `B0` | **36** / 35 | 36 (`C1`) |
-| **Ch 2** | **SNARE** | `D1` / `E1` | **38** / 40 | 37 (`C#1`) |
-| **Ch 3** | **CLOSED HAT** | `F#1` / `G#1` | **42** / 44 | 38 (`D1`) |
-| **Ch 4** | **OPEN HAT** | `A#1` | **46** | 39 (`D#1`) |
-| **Ch 5** | **CLAP** | `D#1` | **39** | 40 (`E1`) |
-| **Ch 6** | **RIMSHOT** | `C#1` | **37** | 41 (`F1`) |
-| **Ch 7** | **HI PERC** | `D2` / `C2` | **50** / 48 | 42 (`F#1`) |
-| **Ch 8** | **MID PERC** | `B1` / `A1` | **47** / 45 | 43 (`G1`) |
-| **Ch 9** | **LOW PERC** | `F1` / `G1` | **41** / 43 | 44 (`G#1`) |
-| **Ch 10** | **COWBELL** | `G#2` | **56** | 45 (`A1`) |
-| **Ch 11** | **CRASH** | `C#2` / `A2` | **49** / 57 | 46 (`A#1`) |
-| **Ch 12** | **RIDE** | `D#2` / `B2` | **51** / 59 | 47 (`B1`) |
+| Canal | Instrumento | Nota MIDI Primaria (C3) | Número de Nota | Octava C2 | Octava C1 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Ch 1** | **KICK** | **`C3`** | **60** | 48 (`C2`) | 36 (`C1`) |
+| **Ch 2** | **SNARE** | **`C#3`** | **61** | 49 (`C#2`) | 37 (`C#1`) |
+| **Ch 3** | **CLOSED HAT** | **`D3`** | **62** | 50 (`D2`) | 38 (`D1`) |
+| **Ch 4** | **OPEN HAT** | **`D#3`** | **63** | 51 (`D#2`) | 39 (`D#1`) |
+| **Ch 5** | **CLAP** | **`E3`** | **64** | 52 (`E2`) | 40 (`E1`) |
+| **Ch 6** | **RIMSHOT** | **`F3`** | **65** | 53 (`F2`) | 41 (`F1`) |
+| **Ch 7** | **HI PERC** | **`F#3`** | **66** | 54 (`F#2`) | 42 (`F#1`) |
+| **Ch 8** | **MID PERC** | **`G3`** | **67** | 55 (`G2`) | 43 (`G1`) |
+| **Ch 9** | **LOW PERC** | **`G#3`** | **68** | 56 (`G#2`) | 44 (`G#1`) |
+| **Ch 10** | **COWBELL** | **`A3`** | **69** | 57 (`A2`) | 45 (`A1`) |
+| **Ch 11** | **CRASH** | **`A#3`** | **70** | 58 (`A#2`) | 46 (`A#1`) |
+| **Ch 12** | **RIDE** | **`B3`** | **71** | 59 (`B2`) | 47 (`B1`) |
 
 ---
 

@@ -1298,13 +1298,9 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
 
         g.setFont (juce::FontOptions (10.0f, juce::Font::bold)); 
         g.setColour (juce::Colours::black.withAlpha(0.4f)); 
-        g.drawText (labels[i], x + 5, 201, 82, 11, juce::Justification::centred);
+        g.drawText (labels[i], x + 5, 204, 82, 11, juce::Justification::centred);
         g.setColour (juce::Colour (0xff222222)); 
-        g.drawText (labels[i], x + 4, 200, 82, 11, juce::Justification::centred);
-
-        g.setFont (juce::FontOptions (7.5f, juce::Font::bold));
-        g.setColour (juce::Colour (0xff0088cc));
-        g.drawText (ExtasisRhythmProcessor::getMidiNoteNameForChannel (i), x + 4, 210, 82, 8, juce::Justification::centred);
+        g.drawText (labels[i], x + 4, 203, 82, 11, juce::Justification::centred);
 
         g.setFont (juce::FontOptions (7.5f, juce::Font::bold)); 
         g.setColour (juce::Colour (0xff444444));
