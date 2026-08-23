@@ -238,4 +238,51 @@ Extasis Rhythm cuenta con un sistema de verificación criptográfica offline y e
   4. Una vez activado, el diálogo y el botón de activación desaparecen por completo, y el plugin queda permanentemente desbloqueado de por vida en tu estación de trabajo.
 
 ---
+
+## 11. 🎛️ ENTRADA/SALIDA MULTI-CANAL EN ABLETON LIVE Y DAWS
+
+### A. Ruteo Multi-Output de Audio (13 Salidas Estéreo)
+Extasis Rhythm cuenta con un bus principal estéreo (**Master Bus**) y **12 buses auxiliares estéreo dedicados** (uno por cada voz de batería).
+* **Cómo rutear stems individuales en Ableton Live**:
+  1. Inserta `ExtasisRhythm` en una pista MIDI.
+  2. Crea una nueva pista de **Audio** en Ableton.
+  3. En la sección *Audio From* (Entrada de Audio), selecciona **ExtasisRhythm**.
+  4. En el segundo menú desplegable, selecciona el canal que deseas separar: `Kick`, `Snare`, `Closed Hat`, `Open Hat`, `Clap`, `Rimshot`, `Hi Perc`, `Mid Perc`, `Low Perc`, `Cowbell`, `Crash` o `Ride`.
+  5. Activa el monitor en **`In`**.
+  > [!NOTE]
+  > Las salidas individuales envían la señal limpia procesada por los knobs de canal (Volumen, Paneo, Tono, Envolvente), permitiéndote mezclar y procesar cada instrumento con tus propios plugins de mezcla en Ableton sin pasar por los efectos maestros.
+
+---
+
+### B. Mapeo MIDI Estándar (General MIDI Drum Map)
+Puedes disparar y grabar las 12 voces de Extasis Rhythm desde cualquier controlador MIDI, teclado, MPC, Launchpad o Ableton Push:
+
+| Canal | Instrumento | Nota MIDI (GM) | Número de Nota | Alternativa Cromática |
+| :--- | :--- | :--- | :--- | :--- |
+| **Ch 1** | **KICK** | `C1` / `B0` | **36** / 35 | 36 (`C1`) |
+| **Ch 2** | **SNARE** | `D1` / `E1` | **38** / 40 | 37 (`C#1`) |
+| **Ch 3** | **CLOSED HAT** | `F#1` / `G#1` | **42** / 44 | 38 (`D1`) |
+| **Ch 4** | **OPEN HAT** | `A#1` | **46** | 39 (`D#1`) |
+| **Ch 5** | **CLAP** | `D#1` | **39** | 40 (`E1`) |
+| **Ch 6** | **RIMSHOT** | `C#1` | **37** | 41 (`F1`) |
+| **Ch 7** | **HI PERC** | `D2` / `C2` | **50** / 48 | 42 (`F#1`) |
+| **Ch 8** | **MID PERC** | `B1` / `A1` | **47** / 45 | 43 (`G1`) |
+| **Ch 9** | **LOW PERC** | `F1` / `G1` | **41** / 43 | 44 (`G#1`) |
+| **Ch 10** | **COWBELL** | `G#2` | **56** | 45 (`A1`) |
+| **Ch 11** | **CRASH** | `C#2` / `A2` | **49** / 57 | 46 (`A#1`) |
+| **Ch 12** | **RIDE** | `D#2` / `B2` | **51** / 59 | 47 (`B1`) |
+
+---
+
+### C. Salida MIDI de 12 Canales (Controlar Sintes Externos / TB-303)
+El secuenciador interno de Extasis Rhythm emite notas MIDI en tiempo real hacia tu DAW:
+* Cada carril del secuenciador (1 al 12) transmite en su propio canal MIDI (**Canal 1 al Canal 12**).
+* **Cómo controlar un sintetizador (ej. Roland TB-303, Phoscyon, ABL3 o sinte de Ableton)**:
+  1. En una pista MIDI en Ableton, carga tu sintetizador de bajo o melodía (ej. TB-303).
+  2. En el menú *MIDI From* de esa pista, selecciona **ExtasisRhythm**.
+  3. En el submenú de canal, selecciona el canal MIDI correspondiente (ej. **Ch. 1** para el carril de Kick o **Ch. 7** para Hi Perc).
+  4. Activa el monitor en **`In`**.
+  5. Al reproducir, las notas, afinaciones por paso (Note Lock) y secuencias polirrítmicas (`FIT`) de ese carril tocarán tu sintetizador automáticamente.
+
+---
 *Extasis Rhythm v2.0 — Diseñado para la creación rítmica sin límites.*

@@ -84,7 +84,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout ExtasisRhythmProcessor::crea
 }
 
 ExtasisRhythmProcessor::ExtasisRhythmProcessor()
-    : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
+    : AudioProcessor (BusesProperties()
+        .withOutput ("Master", juce::AudioChannelSet::stereo(), true)
+        .withOutput ("Kick", juce::AudioChannelSet::stereo(), false)
+        .withOutput ("Snare", juce::AudioChannelSet::stereo(), false)
+        .withOutput ("Closed Hat", juce::AudioChannelSet::stereo(), false)
+        .withOutput ("Open Hat", juce::AudioChannelSet::stereo(), false)
+        .withOutput ("Clap", juce::AudioChannelSet::stereo(), false)
+        .withOutput ("Rimshot", juce::AudioChannelSet::stereo(), false)
+        .withOutput ("Hi Perc", juce::AudioChannelSet::stereo(), false)
+        .withOutput ("Mid Perc", juce::AudioChannelSet::stereo(), false)
+        .withOutput ("Low Perc", juce::AudioChannelSet::stereo(), false)
+        .withOutput ("Cowbell", juce::AudioChannelSet::stereo(), false)
+        .withOutput ("Crash", juce::AudioChannelSet::stereo(), false)
+        .withOutput ("Ride", juce::AudioChannelSet::stereo(), false)),
       apvts (*this, nullptr, "APVTS", createParameterLayout()) {
     
     formatManager.registerBasicFormats();
@@ -229,7 +242,7 @@ void ExtasisRhythmProcessor::initializeParameterPointers()
 
 const juce::String ExtasisRhythmProcessor::getName() const { return JucePlugin_Name; }
 bool ExtasisRhythmProcessor::acceptsMidi() const { return true; }
-bool ExtasisRhythmProcessor::producesMidi() const { return false; }
+bool ExtasisRhythmProcessor::producesMidi() const { return true; }
 bool ExtasisRhythmProcessor::isMidiEffect() const { return false; }
 double ExtasisRhythmProcessor::getTailLengthSeconds() const { return 0.0; }
 int ExtasisRhythmProcessor::getNumPrograms() { return 1; }
@@ -237,7 +250,88 @@ int ExtasisRhythmProcessor::getCurrentProgram() { return 0; }
 void ExtasisRhythmProcessor::setCurrentProgram (int) {}
 const juce::String ExtasisRhythmProcessor::getProgramName (int) { return {}; }
 void ExtasisRhythmProcessor::changeProgramName (int index, const juce::String& newName) {}
-bool ExtasisRhythmProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const { juce::ignoreUnused(layouts); return true; }
+
+bool ExtasisRhythmProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const 
+{
+    // Master output must be stereo
+    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+        return false;
+
+    // All individual stem output buses (1 to 12) must be either disabled or stereo
+    for (int b = 1; b < layouts.outputBuses.size(); ++b)
+    {
+        const auto& bus = layouts.outputBuses.getReference (b);
+        if (!bus.isDisabled() && bus != juce::AudioChannelSet::stereo())
+            return false;
+    }
+
+    return true;
+}
+
+int ExtasisRhythmProcessor::getChannelForMidiNote (int noteNum)
+{
+    // General MIDI (GM) Standard Percussion Mapping
+    switch (noteNum)
+    {
+        case 35: // Acoustic Bass Drum
+        case 36: return 0;  // Bass Drum 1 (Kick)
+
+        case 38: // Acoustic Snare
+        case 40: return 1;  // Electric Snare
+        
+        case 42: // Closed Hi-Hat
+        case 44: return 2;  // Pedal Hi-Hat
+
+        case 46: return 3;  // Open Hi-Hat
+
+        case 39: return 4;  // Hand Clap
+
+        case 37: return 5;  // Side Stick / Rimshot
+
+        case 48: // Hi-Mid Tom
+        case 50: return 6;  // High Tom / Hi Perc
+
+        case 45: // Low Tom
+        case 47: return 7;  // Low-Mid Tom / Mid Perc
+
+        case 41: // Low Floor Tom
+        case 43: return 8;  // High Floor Tom / Low Perc
+
+        case 56: return 9;  // Cowbell
+
+        case 49: // Crash Cymbal 1
+        case 57: return 10; // Crash Cymbal 2
+
+        case 51: // Ride Cymbal 1
+        case 59: return 11; // Ride Cymbal 2
+    }
+
+    // Chromatic fallback for 12-pad drum controllers (C1 = 36 to B1 = 47)
+    if (noteNum >= 36 && noteNum <= 47)
+        return noteNum - 36;
+
+    // Octave up chromatic fallback (C2 = 48 to B2 = 59)
+    if (noteNum >= 48 && noteNum <= 59)
+        return noteNum - 48;
+
+    return -1;
+}
+
+int ExtasisRhythmProcessor::getMidiNoteForChannel (int ch)
+{
+    static const int gmNotes[12] = { 36, 38, 42, 46, 39, 37, 50, 47, 41, 56, 49, 51 };
+    if (ch >= 0 && ch < 12) return gmNotes[ch];
+    return 36;
+}
+
+juce::String ExtasisRhythmProcessor::getMidiNoteNameForChannel (int ch)
+{
+    static const char* noteNames[12] = { "C1 (36)", "D1 (38)", "F#1 (42)", "A#1 (46)", 
+                                         "D#1 (39)", "C#1 (37)", "D2 (50)", "B1 (47)", 
+                                         "F1 (41)", "G#2 (56)", "C#2 (49)", "D#2 (51)" };
+    if (ch >= 0 && ch < 12) return noteNames[ch];
+    return "C1";
+}
 
 void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
     currentSampleRate = sr; currentSamplesPerBlock = bs;
@@ -668,6 +762,11 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     auto startTime = juce::Time::getHighResolutionTicks(); 
 
     juce::ScopedNoDenormals noDenormals; 
+    
+    juce::MidiBuffer incomingMidi;
+    incomingMidi.addEvents (midi, 0, buffer.getNumSamples(), 0);
+    midi.clear();
+
     buffer.clear(); 
     if (currentSampleRate <= 0.0) return;
 
@@ -682,8 +781,32 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         }
     }
     
+    // Multi-Out Audio: Cache stem output bus buffers (Buses 1 to 12)
+    juce::AudioBuffer<float> stemBuses[12];
+    bool stemBusEnabled[12] = { false };
+    int totalOutputBuses = getBusCount (false);
+    for (int b = 0; b < 12; ++b) {
+        if ((b + 1) < totalOutputBuses) {
+            auto* bus = getBus (false, b + 1);
+            if (bus != nullptr && bus->isEnabled()) {
+                stemBuses[b] = getBusBuffer (buffer, false, b + 1);
+                stemBusEnabled[b] = (stemBuses[b].getNumChannels() >= 2);
+            }
+        }
+    }
+    auto masterBus = getBusBuffer (buffer, false, 0);
+    
     for (int i = 0; i < 12; ++i) { int c = flashCounters[i].load(); if (c > 0) flashCounters[i] = c - 1; }
-    for (const auto meta : midi) { auto msg = meta.getMessage(); if (msg.isNoteOn()) triggerChannel (msg.getNoteNumber() - 36, msg.getFloatVelocity()); }
+    
+    for (const auto meta : incomingMidi) { 
+        auto msg = meta.getMessage(); 
+        if (msg.isNoteOn()) {
+            int ch = getChannelForMidiNote (msg.getNoteNumber());
+            if (ch >= 0 && ch < 12) {
+                triggerChannel (ch, msg.getFloatVelocity());
+            }
+        }
+    }
 
     bool currentHostPlaying = false; double currentHostBpm = 120.0; double ppqPosition = 0.0; bool hasHostTime = false;
     if (auto* playHead = getPlayHead()) {
@@ -731,8 +854,8 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     float springDec = apvts.getRawParameterValue ("springDecay")->load(); float springTon = apvts.getRawParameterValue ("springTone")->load();
     springToneFilterL.setCutoffFrequency(springTon); springToneFilterL.setResonance(0.71f); springToneFilterR.setCutoffFrequency(springTon); springToneFilterR.setResonance(0.71f);
     
-    bool delaySync = apvts.getRawParameterValue ("delaySync")->load() > 0.5f;
     float targetDelMs = apvts.getRawParameterValue("delayTime")->load();
+    bool delaySync = apvts.getRawParameterValue("delaySync")->load() > 0.5f;
     if (delaySync && bpm > 20.0) {
         float beatMs = (60.0f / (float)bpm) * 1000.0f;
         float beatFraction = 0.5f; 
@@ -779,7 +902,14 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
     if (!playing) {
         internalElapsedBeats = 0.0;
-        for (int i = 0; i < 12; ++i) { lastSubStep[i] = -1; channelStepSemitones[i] = 0.0f; }
+        for (int i = 0; i < 12; ++i) { 
+            lastSubStep[i] = -1; 
+            channelStepSemitones[i] = 0.0f;
+            if (activeMidiNotes[i] >= 0) {
+                midi.addEvent (juce::MidiMessage::noteOff (i + 1, activeMidiNotes[i]), 0);
+                activeMidiNotes[i] = -1;
+            }
+        }
         lastFillSubStep = -1;
         fillSeqPos = 0;
     }
@@ -841,7 +971,26 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
                     auto* stepParam = cachedStepParams[ch][mappedStep];
                     int stepV = (stepParam != nullptr) ? (int)(stepParam->load() + 0.5f) : 0;
-                    if (stepV > 0) triggerChannel(ch, (stepV == 1 ? 0.4f : (stepV == 2 ? 0.7f : 1.0f)));
+                    if (stepV > 0) {
+                        float stepVel = (stepV == 1 ? 0.4f : (stepV == 2 ? 0.7f : 1.0f));
+                        triggerChannel (ch, stepVel);
+
+                        // 12-Channel MIDI Output
+                        int baseNote = getMidiNoteForChannel (ch);
+                        int targetNote = juce::jlimit (0, 127, baseNote + (int)channelStepSemitones[ch].load());
+                        int midiChan = ch + 1; // MIDI channel 1 to 12
+
+                        if (activeMidiNotes[ch] >= 0) {
+                            midi.addEvent (juce::MidiMessage::noteOff (midiChan, activeMidiNotes[ch]), s);
+                        }
+                        midi.addEvent (juce::MidiMessage::noteOn (midiChan, targetNote, stepVel), s);
+                        activeMidiNotes[ch] = targetNote;
+                    } else {
+                        if (activeMidiNotes[ch] >= 0) {
+                            midi.addEvent (juce::MidiMessage::noteOff (ch + 1, activeMidiNotes[ch]), s);
+                            activeMidiNotes[ch] = -1;
+                        }
+                    }
                 }
             }
 
@@ -961,6 +1110,12 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                 float pannedL = chOutL * std::sqrt (0.5f * (1.0f - chanPan[i])) * finalGain; 
                 float pannedR = chOutR * std::sqrt (0.5f * (1.0f + chanPan[i])) * finalGain;
                 pannedL = fastTanh (pannedL * 1.5f); pannedR = fastTanh (pannedR * 1.5f);
+
+                // Multi-Out Stem bus routing (Bypasses Master FX when routed separately in DAW)
+                if (stemBusEnabled[i]) {
+                    stemBuses[i].setSample (0, s, pannedL);
+                    stemBuses[i].setSample (1, s, pannedR);
+                }
 
                 if (i == 0) {
                     kickL += pannedL; kickR += pannedR;
@@ -1128,9 +1283,9 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             if (std::abs(mixedR) > ceiling) mixedR = (mixedR > 0.0f ? ceiling : -ceiling);
         }
 
-        buffer.setSample (0, s, mixedL); 
-        if (buffer.getNumChannels() > 1) 
-            buffer.setSample (1, s, mixedR);
+        masterBus.setSample (0, s, mixedL); 
+        if (masterBus.getNumChannels() > 1) 
+            masterBus.setSample (1, s, mixedR);
     }
 
     float curRmsL = buffer.getRMSLevel (0, 0, buffer.getNumSamples()); 

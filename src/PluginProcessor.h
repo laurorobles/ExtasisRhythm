@@ -53,6 +53,12 @@ public:
     std::atomic<int64_t> demoSamplesElapsed { 0 };
     std::atomic<bool> demoExpired { false };
 
+    static int getChannelForMidiNote (int noteNum);
+    static int getMidiNoteForChannel (int ch);
+    static juce::String getMidiNoteNameForChannel (int ch);
+
+    int activeMidiNotes[12] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+
     void triggerChannel (int ch, float vel);
     void killAllAudio();
     void resetAllParameters();
