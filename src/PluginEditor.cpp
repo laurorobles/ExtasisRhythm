@@ -1273,14 +1273,14 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
 
         g.setFont (juce::FontOptions (7.5f, juce::Font::bold)); 
         g.setColour (juce::Colour (0xff444444));
-        g.drawText ("VOL",   x + 4,  302, 40, 9, juce::Justification::centred); 
-        g.drawText ("PAN",   x + 48, 302, 40, 9, juce::Justification::centred);
-        g.drawText ("PITCH", x + 4,  343, 40, 9, juce::Justification::centred); 
-        g.drawText ("TONE",  x + 48, 343, 40, 9, juce::Justification::centred);
-        g.drawText ("ATT",   x + 4,  384, 40, 9, juce::Justification::centred); 
-        g.drawText ("DEC",   x + 48, 384, 40, 9, juce::Justification::centred);
-        g.drawText ("SPR",   x + 4,  425, 40, 9, juce::Justification::centred); 
-        g.drawText ("DLY",   x + 48, 425, 40, 9, juce::Justification::centred);
+        g.drawText ("VOL",   x + 4,  305, 40, 9, juce::Justification::centred); 
+        g.drawText ("PAN",   x + 48, 305, 40, 9, juce::Justification::centred);
+        g.drawText ("PITCH", x + 4,  346, 40, 9, juce::Justification::centred); 
+        g.drawText ("TONE",  x + 48, 346, 40, 9, juce::Justification::centred);
+        g.drawText ("ATT",   x + 4,  387, 40, 9, juce::Justification::centred); 
+        g.drawText ("DEC",   x + 48, 387, 40, 9, juce::Justification::centred);
+        g.drawText ("SPR",   x + 4,  428, 40, 9, juce::Justification::centred); 
+        g.drawText ("DLY",   x + 48, 428, 40, 9, juce::Justification::centred);
     }
     
     if (isSequencerVisible) {
@@ -1471,7 +1471,7 @@ void ExtasisRhythmEditor::resized()
 
     for (int cIdx = 0; cIdx < 12; ++cIdx) {
         int x = 10 + cIdx * 98;
-        channelLedButtons[cIdx]->setBounds (sz(x + 41, 189, 10, 10));
+        channelLedButtons[cIdx]->setBounds (sz(x + 5, 187, 82, 28));
         muteButtons[cIdx].setBounds (sz(x + 6, 218, 18, 16)); 
         soloButtons[cIdx].setBounds (sz(x + 27, 218, 18, 16)); 
         envChannelButtons[cIdx].setBounds (sz(x + 48, 218, 38, 16));
@@ -1479,14 +1479,14 @@ void ExtasisRhythmEditor::resized()
         sampleVariantSelectors[cIdx].setBounds (sz(x + 6, 256, 80, 17));
         
         int kSize = 34; 
-        volumeSliders[cIdx].setBounds     (sz(x + 7, 270, kSize, kSize)); 
-        panSliders[cIdx].setBounds        (sz(x + 51, 270, kSize, kSize));
-        pitchSliders[cIdx].setBounds      (sz(x + 7, 311, kSize, kSize)); 
-        toneSliders[cIdx].setBounds       (sz(x + 51, 311, kSize, kSize));
-        attackSliders[cIdx].setBounds     (sz(x + 7, 352, kSize, kSize)); 
-        decaySliders[cIdx].setBounds      (sz(x + 51, 352, kSize, kSize));
-        springSendSliders[cIdx].setBounds (sz(x + 7, 393, kSize, kSize)); 
-        delaySendSliders[cIdx].setBounds  (sz(x + 51, 393, kSize, kSize));
+        volumeSliders[cIdx].setBounds     (sz(x + 7, 273, kSize, kSize)); 
+        panSliders[cIdx].setBounds        (sz(x + 51, 273, kSize, kSize));
+        pitchSliders[cIdx].setBounds      (sz(x + 7, 314, kSize, kSize)); 
+        toneSliders[cIdx].setBounds       (sz(x + 51, 314, kSize, kSize));
+        attackSliders[cIdx].setBounds     (sz(x + 7, 355, kSize, kSize)); 
+        decaySliders[cIdx].setBounds      (sz(x + 51, 355, kSize, kSize));
+        springSendSliders[cIdx].setBounds (sz(x + 7, 396, kSize, kSize)); 
+        delaySendSliders[cIdx].setBounds  (sz(x + 51, 396, kSize, kSize));
     }
 
     int seqX = 15; 
@@ -1516,14 +1516,14 @@ void ExtasisRhythmEditor::resized()
         shiftRightButtons[seqIdx].setVisible (isSequencerVisible);
 
         if (isSequencerVisible) {
-            int bx = seqX + 80;
-            fitButtons[seqIdx].setBounds     (sz(bx,        seqY + 8 + (seqIdx * 24), 30, 20)); 
-            seqModeButtons[seqIdx].setBounds (sz(bx + 32,   seqY + 8 + (seqIdx * 24), 30, 20)); 
-            minusButtons[seqIdx].setBounds   (sz(bx + 64,   seqY + 8 + (seqIdx * 24), 16, 20)); 
-            lengthLabels[seqIdx].setBounds   (sz(bx + 81,   seqY + 8 + (seqIdx * 24), 18, 20)); 
-            plusButtons[seqIdx].setBounds    (sz(bx + 100,  seqY + 8 + (seqIdx * 24), 16, 20)); 
-            shiftLeftButtons[seqIdx].setBounds(sz(bx + 118, seqY + 8 + (seqIdx * 24), 16, 20)); 
-            shiftRightButtons[seqIdx].setBounds(sz(bx + 136,seqY + 8 + (seqIdx * 24), 16, 20)); 
+            int bx = seqX + 68;
+            fitButtons[seqIdx].setBounds     (sz(bx,        seqY + 8 + (seqIdx * 24), 34, 20)); 
+            seqModeButtons[seqIdx].setBounds (sz(bx + 36,   seqY + 8 + (seqIdx * 24), 34, 20)); 
+            minusButtons[seqIdx].setBounds   (sz(bx + 72,   seqY + 8 + (seqIdx * 24), 18, 20)); 
+            lengthLabels[seqIdx].setBounds   (sz(bx + 92,   seqY + 8 + (seqIdx * 24), 20, 20)); 
+            plusButtons[seqIdx].setBounds    (sz(bx + 114,  seqY + 8 + (seqIdx * 24), 18, 20)); 
+            shiftLeftButtons[seqIdx].setBounds(sz(bx + 134, seqY + 8 + (seqIdx * 24), 18, 20)); 
+            shiftRightButtons[seqIdx].setBounds(sz(bx + 154,seqY + 8 + (seqIdx * 24), 18, 20)); 
         }
 
         for (int step = 0; step < 32; ++step) {
@@ -1549,15 +1549,15 @@ void ExtasisRhythmEditor::resized()
     fillShiftRightButton.setVisible (isSequencerVisible);
 
     if (isSequencerVisible) {
-        int bx = seqX + 80;
+        int bx = seqX + 68;
         int by = seqY + 10 + (12 * 24);
-        fillFitButton.setBounds       (sz(bx,       by, 30, 20));
-        fillSeqModeButton.setBounds   (sz(bx + 32,  by, 30, 20));
-        fillMinusButton.setBounds     (sz(bx + 64,  by, 16, 20));
-        fillLengthLabel.setBounds     (sz(bx + 81,  by, 18, 20));
-        fillPlusButton.setBounds      (sz(bx + 100, by, 16, 20));
-        fillShiftLeftButton.setBounds (sz(bx + 118, by, 16, 20));
-        fillShiftRightButton.setBounds(sz(bx + 136, by, 16, 20));
+        fillFitButton.setBounds       (sz(bx,       by, 34, 20));
+        fillSeqModeButton.setBounds   (sz(bx + 36,  by, 34, 20));
+        fillMinusButton.setBounds     (sz(bx + 72,  by, 18, 20));
+        fillLengthLabel.setBounds     (sz(bx + 92,  by, 20, 20));
+        fillPlusButton.setBounds      (sz(bx + 114, by, 18, 20));
+        fillShiftLeftButton.setBounds (sz(bx + 134, by, 18, 20));
+        fillShiftRightButton.setBounds(sz(bx + 154, by, 18, 20));
     }
 
     for (int step = 0; step < 16; ++step) {

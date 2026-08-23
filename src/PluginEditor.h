@@ -82,24 +82,33 @@ public:
     ExtasisRhythmProcessor& processor;
     int channelIndex = 0;
 
-    ChannelLedButton (ExtasisRhythmProcessor& p, int ch) : processor (p), channelIndex (ch) {}
+    ChannelLedButton (ExtasisRhythmProcessor& p, int ch) : processor (p), channelIndex (ch) 
+    {
+        setMouseCursor (juce::MouseCursor::PointingHandCursor);
+    }
 
     void mouseDown (const juce::MouseEvent&) override
     {
         processor.triggerChannel (channelIndex, 1.0f);
+        processor.flashCounters[channelIndex].store (15);
+        repaint();
     }
 
     void paint (juce::Graphics& g) override
     {
         bool isLit = processor.flashCounters[channelIndex].load() > 0;
-        g.setColour (isLit ? juce::Colour (0xff3498db) : juce::Colour (0xff444444));
-        g.fillEllipse (0.0f, 0.0f, (float)getWidth(), (float)getHeight());
+        float ledSize = 10.0f;
+        float ledX = ((float)getWidth() - ledSize) * 0.5f;
+        float ledY = 2.0f;
+
+        g.setColour (isLit ? juce::Colour (0xff00d2ff) : juce::Colour (0xff444444));
+        g.fillEllipse (ledX, ledY, ledSize, ledSize);
         g.setColour (juce::Colours::black.withAlpha (0.6f));
-        g.drawEllipse (0.0f, 0.0f, (float)getWidth(), (float)getHeight(), 1.5f);
+        g.drawEllipse (ledX, ledY, ledSize, ledSize, 1.5f);
         if (isLit)
         {
-            g.setColour (juce::Colours::white.withAlpha (0.8f));
-            g.fillEllipse (2.0f, 2.0f, (float)getWidth() - 4.0f, (float)getHeight() - 4.0f);
+            g.setColour (juce::Colours::white.withAlpha (0.95f));
+            g.fillEllipse (ledX + 2.0f, ledY + 2.0f, ledSize - 4.0f, ledSize - 4.0f);
         }
     }
 };
