@@ -1134,8 +1134,19 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
 
     if (logoImage.isValid())
     {
-        g.drawImage (logoImage, juce::Rectangle<float> (35.0f, 78.0f, 120.0f, 88.0f),
-                     juce::RectanglePlacement::centred | juce::RectanglePlacement::onlyReduceInSize);
+        auto logoRect = juce::Rectangle<float> (35.0f, 78.0f, 120.0f, 88.0f);
+        auto placement = juce::RectanglePlacement::centred | juce::RectanglePlacement::onlyReduceInSize;
+
+        // Multi-layered realistic contour drop shadow
+        g.setColour (juce::Colours::black.withAlpha (0.12f));
+        g.drawImage (logoImage, logoRect.translated (0.0f, 5.0f), placement, true);
+        g.setColour (juce::Colours::black.withAlpha (0.22f));
+        g.drawImage (logoImage, logoRect.translated (0.0f, 3.0f), placement, true);
+        g.setColour (juce::Colours::black.withAlpha (0.35f));
+        g.drawImage (logoImage, logoRect.translated (0.0f, 1.5f), placement, true);
+
+        // Foreground crisp logo
+        g.drawImage (logoImage, logoRect, placement, false);
     }
 
     g.setColour (juce::Colours::white.withAlpha(0.5f)); 
