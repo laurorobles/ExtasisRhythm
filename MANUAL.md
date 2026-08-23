@@ -14,6 +14,7 @@
 9. [Guía Rápida de Atajos y Tips de Producción](#9-guía-rápida-de-atajos-y-tips-de-producción)
 10. [Modo Demo & Activación de Licencia](#10--modo-demo--activación-de-licencia)
 11. [Entrada/Salida Multi-Canal en Ableton Live y DAWs](#11-️-entradasalida-multi-canal-en-ableton-live-y-daws)
+12. [Arquitectura Detallada de la Señal & Flujo DSP](#12-🔬-arquitectura-detallada-de-la-señal--flujo-dsp)
 
 ---
 
@@ -294,6 +295,73 @@ El secuenciador interno de Extasis Rhythm emite notas MIDI en tiempo real hacia 
   3. En el submenú de canal, selecciona el canal MIDI correspondiente (ej. **Ch. 1** para el carril de Kick o **Ch. 7** para Hi Perc).
   4. Activa el monitor en **`In`**.
   5. Al reproducir, las notas, afinaciones por paso (Note Lock) y secuencias polirrítmicas (`FIT`) de ese carril tocarán tu sintetizador automáticamente.
+
+---
+
+## 12. 🔬 ARQUITECTURA DETALLADA DE LA SEÑAL & FLUJO DSP
+
+Para una especificación técnica profunda en código y matemáticas, consulta también [ARCHITECTURE.md](ARCHITECTURE.md).
+
+### A. Diagrama de Bloques y Ruteo de Señal
+
+```mermaid
+flowchart TD
+    subgraph S1 ["1. DISPARO & MOTOR DE VOCES"]
+        IN_MIDI["MIDI In (C3..B3)"] --> VOICES["12x Voces de Batería"]
+        IN_SEQ["Secuenciador Polirrítmico"] --> VOICES
+        VOICES --> RESAMPLE["Interpolación Cúbica Hermite (±12 st)"]
+        RESAMPLE --> ENV["Envolvente Attack/Decay + Anti-Click"]
+    end
+
+    subgraph S2 ["2. TIRA DE CANAL (x12 Canales)"]
+        ENV --> TONE["Filtro Tonal (12dB/oct)"]
+        TONE --> ENV_FILT["Filtro Dinámico Auto-Wah (ENV)"]
+        ENV_FILT --> PAN["Paneo de Energía Constante (Equal-Power)"]
+        PAN --> SAT["Saturación Suave Tanh"]
+    end
+
+    subgraph S3 ["3. MATRIZ DE RUTEO & MULTI-OUT"]
+        SAT --> |"Salida Directa Limpia"| STEMS["12 Salidas Auxiliares DAW (Stems)"]
+        SAT --> |"Envío Spring"| S_SEND["Bus de Reverb Spring"]
+        SAT --> |"Envío Delay"| D_SEND["Bus de Stereo Delay"]
+        SAT --> |"Kick (Ch 0)"| KICK_BUS["Sub-Bus de Bombo"]
+        SAT --> |"Otros (Ch 1..11)"| OTHER_BUS["Sub-Bus de Instrumentos"]
+    end
+
+    subgraph S4 ["4. RETORNOS DE EFECTOS SEND"]
+        S_SEND --> SPRING_DSP["Tanque Spring Reverb (All-pass Matrix)"]
+        D_SEND --> DELAY_DSP["Tape Delay Modulado (LFO Wow/Flutter)"]
+    end
+
+    subgraph S5 ["5. PROCESAMIENTO MASTER BUS"]
+        KICK_BUS & OTHER_BUS --> PCM["PCM Bit Crusher (16..4b) & Downsampler"]
+        PCM --> DRIVE["Overdrive Asimétrico Rat + Tono"]
+        DRIVE --> TRANS["Modelador de Transitorios Master"]
+        TRANS --> DJ_FILT["Filtro DJ Doble Estado (HPF + LPF)"]
+        DJ_FILT --> FLANG["Flanger Analógico BBD"]
+        FLANG --> CHOR["CE Chorus en Cuadratura (90° Desfase)"]
+        CHOR --> PUMP["Compresor PUMP Sidechain (Ducking por Bombo)"]
+        PUMP & SPRING_DSP & DELAY_DSP --> MASTER_SUM["Nodo de Suma Estéreo"]
+        MASTER_SUM --> VINTAGE["Perfiles Analógico / Vinilo"]
+        VINTAGE --> CLIP["Master Soft Clipper"]
+        CLIP --> LIMIT["Limitador Brickwall (-0.2 dBFS True-Peak)"]
+        LIMIT --> MAIN_OUT["Salida Master Estéreo (Bus 0)"]
+    end
+```
+
+### B. Etapas de Procesamiento Explicadas
+
+1. **Interpolación Cúbica Hermite de 4 Puntos**:
+   - Evita la aspereza digital y el aliasing al transponer muestras mediante el polinomio de Hermite de 3er orden:
+     $$y(x) = c_0 + x \cdot (c_1 + x \cdot (c_2 + x \cdot c_3))$$
+2. **Tira de Canal**:
+   - Cada canal posee su propio filtro de tono SVF, seguidor de envolvente auto-wah, paneo estéreo de energía constante ($\sin / \cos$) y saturador suave $\tanh$.
+3. **Multi-Out Stems**:
+   - Las 12 salidas auxiliares toman la señal directamente después de la tira de canal, permitiendo mezclar y ecualizar cada instrumento de forma aislada en tu DAW sin pasar por los efectos maestros.
+4. **Efectos Send en Paralelo**:
+   - Los buses de **Spring Reverb** (cascada de 4 etapas all-pass) y **Tape Delay** (con modulación LFO analógica) procesan en paralelo y retornan directamente al nodo de suma master.
+5. **Cadena Master Analógica y Digital**:
+   - Los instrumentos pasan por reducción de bits PCM, overdrive armónico, modelado de transitorios, filtros DJ resonantes, modulación estéreo BBD (Flanger/Chorus) y sidechain PUMP antes del limitador de seguridad True-Peak.
 
 ---
 *Extasis Rhythm v2.0 — Diseñado para la creación rítmica sin límites.*

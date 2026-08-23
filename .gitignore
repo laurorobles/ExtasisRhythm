@@ -27,3 +27,4 @@ generate_license.py
 serials*.txt
 *.key
 license*.txt
+dist/

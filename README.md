@@ -84,9 +84,10 @@ Each release package includes automated 1-click installers that configure the VS
 
 ---
 
-## 📖 Official User Manual
+## 📖 Official User Manual & Technical Architecture
 
-For in-depth explanations, routing tutorials, and production tips, read the **[Official User Manual (MANUAL.md)](MANUAL.md)**.
+* **[Official User Manual (MANUAL.md)](MANUAL.md)**: In-depth user guide, parameter reference, DAW setup, and production techniques.
+* **[Signal & DSP Architecture Specification (ARCHITECTURE.md)](ARCHITECTURE.md)**: Detailed audio and MIDI signal flow diagrams, Hermite interpolation math, and multi-bus routing matrices.
 
 ---
 
