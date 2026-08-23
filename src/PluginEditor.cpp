@@ -1137,11 +1137,16 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
         auto logoRect = juce::Rectangle<float> (35.0f, 78.0f, 120.0f, 88.0f);
         auto placement = juce::RectanglePlacement::centred | juce::RectanglePlacement::onlyReduceInSize;
 
-        // Clean black drop shadow matching the title text style
+        // 1. Black drop shadow strictly in the background (offset by +2px)
         g.setColour (juce::Colours::black.withAlpha (0.45f));
-        g.drawImage (logoImage, logoRect.translated (1.5f, 1.5f), placement, true);
+        g.drawImage (logoImage, logoRect.translated (2.0f, 2.0f), placement, true);
 
-        // Foreground crisp original PNG
+        // 2. Solid pure white backing mask directly under the logo
+        // (Prevents the black shadow or gray background from bleeding through semi-transparent logo pixels)
+        g.setColour (juce::Colours::white);
+        g.drawImage (logoImage, logoRect, placement, true);
+
+        // 3. 100% pure, bright, original color logo in the foreground
         g.drawImage (logoImage, logoRect, placement, false);
     }
 
