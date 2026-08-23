@@ -12,6 +12,8 @@
 7. [Rack de Efectos & Procesamiento DSP](#7-rack-de-efectos--procesamiento-dsp)
 8. [Módulo Master Bus, Monitoreo & VU Meter](#8-módulo-master-bus-monitoreo--vu-meter)
 9. [Guía Rápida de Atajos y Tips de Producción](#9-guía-rápida-de-atajos-y-tips-de-producción)
+10. [Modo Demo & Activación de Licencia](#10--modo-demo--activación-de-licencia)
+11. [Entrada/Salida Multi-Canal en Ableton Live y DAWs](#11-️-entradasalida-multi-canal-en-ableton-live-y-daws)
 
 ---
 

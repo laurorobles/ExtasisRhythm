@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Hybrid Vintage Drum Machine & Multi-FX Polyrhythmic Groovebox Workstation</strong><br>
+  <strong>Hybrid Vintage Drum Machine, Multi-Out Workstation & 12-Channel Polyrhythmic Groovebox</strong><br>
   <em>Built with JUCE 7 (C++20) for macOS (Universal Binary) & Windows (x64).</em>
 </p>
 
@@ -26,42 +26,71 @@
 
 ## ✨ Overview
 
-**Extasis Rhythm** combines the raw, tactile grit of legendary 80s/90s hardware beatboxes (*Roland TR-808/TR-909, E-mu SP-1200, Akai MPC60*) with modern polymetric sequencing (*Elektron Octatrack/Digitakt*) and a dedicated vintage studio effect rack.
+**Extasis Rhythm** combines the raw, tactile grit of legendary 80s/90s hardware beatboxes (*Roland TR-808/TR-909, E-mu SP-1200, Akai MPC60, LinnDrum*) with modern polymetric sequencing (*Elektron Octatrack/Digitakt*), multi-output DAW routing, and a dedicated vintage analog/digital multi-FX rack.
 
-### 🌟 Key Highlights:
-- **12 Independent Drum Voices**: Kick, Snare, Closed Hat, Open Hat, Clap, Rimshot, Hi Perc, Mid Perc, Low Perc, Cowbell, Crash, Ride.
-- **Hermite Cubic Resampling Engine**: 4-point continuous polynomial interpolation for artifact-free pitch transposition ($\pm 24$ semitones).
-- **Polyrhythmic Step Sequencer**:
+---
+
+### 🌟 Key Highlights
+
+* **12 Independent Drum Voices**:
+  - `Kick`, `Snare`, `Closed Hat`, `Open Hat`, `Clap`, `Rimshot`, `Hi Perc`, `Mid Perc`, `Low Perc`, `Cowbell`, `Crash`, `Ride`.
+* **Multi-Output Audio Routing (13 Stereo Buses)**:
+  - **Master Bus**: Summed mix processed through the master analog/digital effect chain.
+  - **12 Dedicated Stem Buses**: Route dry/panned individual instruments directly to separate audio tracks in **Ableton Live**, **Logic Pro**, **FL Studio**, **Cubase**, or **Reaper** for dedicated mixing and external VST processing.
+* **12-Channel MIDI Sequencer Output**:
+  - Every sequencer track outputs on its own MIDI channel (**MIDI Channels 1 to 12**).
+  - Emits note triggers, velocities, and per-step semitone pitch locks (*Note Locks*) with portamento *Glides* to drive external synthesizers (e.g. Roland TB-303, basslines, or software instruments).
+* **Chromatic MIDI Pad & Controller Mapping**:
+  - Chromatically mapped starting at **C3 (Note 60)**:
+    `Kick: C3 (60)`, `Snare: C#3 (61)`, `Closed Hat: D3 (62)`, `Open Hat: D#3 (63)`, `Clap: E3 (64)`, `Rimshot: F3 (65)`, `Hi Perc: F#3 (66)`, `Mid Perc: G3 (67)`, `Low Perc: G#3 (68)`, `Cowbell: A3 (69)`, `Crash: A#3 (70)`, `Ride: B3 (71)`.
+    *(Includes octaves C2 and C1 as fallbacks for any MIDI controller).*
+* **Complete Preset Management (`SAVE` / `LOAD`)**:
+  - 1-click preset saving and loading stored in `~/Documents/ExtasisRhythm_Presets/`.
+  - Preserves all 12 sample kit selections, 8 pattern sequences (A to H), note locks, glides, fill tracks, channel knob settings, and Master FX parameters.
+* **Hermite Cubic Resampling Engine**:
+  - 4-point continuous polynomial interpolation for clean, artifact-free pitch transposition ($\pm 12$ semitones).
+* **Polyrhythmic Step Sequencer**:
   - Independent track lengths (1 to 32 steps).
   - Metric scaling modes: **`FIX`** (standard 16th grid) and **`FIT`** (polyrhythmic metric compression over 4/4 bars).
   - Playback directions per channel: **`FWD`** (Forward), **`REV`** (Reverse), **`RND`** (Random generative), **`PNB`** (Ping-Pong / Pendulum).
-  - Per-step multi-velocity, pitch transposition locks, and portamento **`Glide`**.
-- **Dedicated 16-Step Fill Engine**: Immediate transitions and roll injection on the fly.
-- **Vintage Multi-FX Rack**:
+  - 3 dynamic velocity levels per step, pitch transposition locks, and portamento **`Glide`**.
+  - **Dedicated 16-Step Fill Engine**: Immediate transitions and roll injection on the fly.
+* **Vintage Multi-FX Rack**:
   - **Filter**: Dual resonant State-Variable DJ Filter (HPF / LPF).
   - **PCM Crunch**: Variable bit depth (16 to 4-bit) & clock downsampling (6.25 to 100 kHz).
   - **Overdrive**: Asymmetric non-linear soft saturation with tone filter.
-  - **Transient Shaper**: Punch and sustain sculpting.
+  - **Transient Shaper**: Attack punch and sustain sculpting.
   - **Dynamic Envelope Filter**: Auto-Wah follower with vocal resonance.
   - **Pump Compressor**: Sidechain bus ducker.
   - **Analog Flanger & Stereo CE Chorus**: Quadrature LFO modulation with zero click artifacts.
   - **Modulated Tape Delay & Spring Reverb Tank**: Analog-modeled allpass network with soft-clipping.
-- **Master Bus & Metering**:
-  - Brickwall ceiling limiter (-0.2 dBFS), Tape soft clipper, Vinyl simulator, Real-time CPU monitor, and 14-segment stereo RMS/Peak LED ladder.
+  - **Master Bus & Metering**: Brickwall ceiling limiter (-0.2 dBFS), Tape soft clipper, Vinyl simulator, real-time CPU monitor, and 14-segment stereo LED ladder.
 
 ---
 
-## 📖 Official Documentation & Manual
+## ⚡ 1-Click Automated Installation
 
-For full technical specifications, knob mappings, and parameter descriptions, see the **[Official User Manual (MANUAL.md)](MANUAL.md)**.
+Each release package includes automated 1-click installers that configure the VST3 plugin, standalone app, and factory sample library in seconds:
+
+* **🍏 macOS (`INSTALL_MAC.command`)**:
+  - Automatically installs VST3 to `~/Library/Audio/Plug-Ins/VST3/ExtasisRhythm.vst3`
+  - Installs Standalone app to `/Applications/ExtasisRhythm.app`
+  - Copies sample library to `~/Documents/ExtasisRhythm_Samples/`
+* **🪟 Windows (`INSTALL_WINDOWS.bat`)**:
+  - Automatically installs VST3 to `C:\Program Files\Common Files\VST3\ExtasisRhythm.vst3`
+  - Copies sample library to `%USERPROFILE%\Documents\ExtasisRhythm_Samples\`
+
+---
+
+## 📖 Official User Manual
+
+For in-depth explanations, routing tutorials, and production tips, read the **[Official User Manual (MANUAL.md)](MANUAL.md)**.
 
 ---
 
 ## 📥 Download Pre-Compiled Binaries
 
-Official pre-compiled installers (**VST3** and **Standalone**) are available for macOS (Apple Silicon & Intel) and Windows (x64):
-
-- **Releases & Builds**: Check the **[GitHub Releases](https://github.com/laurorobles/ExtasisRhythm/releases)** or **[GitHub Actions Artifacts](https://github.com/laurorobles/ExtasisRhythm/actions)** tab.
+- **Releases & Builds**: Download from the **[GitHub Releases](https://github.com/laurorobles/ExtasisRhythm/releases)** or **[GitHub Actions Artifacts](https://github.com/laurorobles/ExtasisRhythm/actions)** tab.
 - **Official Store & Sound Packs**: [extasisrecords.bandcamp.com](https://extasisrecords.bandcamp.com)
 
 ---
@@ -87,21 +116,19 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release --parallel
 ```
 
-The compiled plugins will be generated in:
-- macOS: `build/ExtasisRhythm_artefacts/Release/VST3/Extasis Rhythm.vst3`
-- Windows: `build/ExtasisRhythm_artefacts/Release/VST3/Extasis Rhythm.vst3`
+Compiled binaries will be generated in:
+- macOS: `build/ExtasisRhythm_artefacts/VST3/ExtasisRhythm.vst3` & `Standalone/ExtasisRhythm.app`
+- Windows: `build/ExtasisRhythm_artefacts/VST3/ExtasisRhythm.vst3` & `Standalone/ExtasisRhythm.exe`
 
 ---
 
----
+## 🔑 Demo Mode & License Activation
 
-## 🔑 License Activation & Support
-
-Extasis Rhythm features an offline cryptographic license verification system. 
-Upon purchase from our official store or partner marketplaces, you will receive your personal 16-character license key (`EXTR-XXXX-XXXX-XXXX-XXXX`) to unlock full permanent access.
-
-- **Official Store**: [extasisrecords.bandcamp.com](https://extasisrecords.bandcamp.com)
-- **Support & Inquiries**: Contact through Extasis Records Bandcamp.
+* **10-Minute Full Evaluation**:
+  - If unregistered, the plugin operates in Demo Mode for 10 minutes with full access to all sound engines, sequencer tracks, and effects.
+  - After 10 minutes, audio output is automatically muted and an activation dialog appears.
+* **Instant Activation**:
+  - Click **`ACTIVATE`**, enter your 16-character license key (`EXTR-XXXX-XXXX-XXXX-XXXX`), and click **`ACTIVATE LICENSE`** to unlock the plugin permanently and offline on your computer.
 
 ---
 
