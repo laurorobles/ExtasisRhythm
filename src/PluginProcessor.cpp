@@ -253,15 +253,22 @@ void ExtasisRhythmProcessor::changeProgramName (int index, const juce::String& n
 
 bool ExtasisRhythmProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const 
 {
-    // Master output must be stereo
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+    // Synth has no inputs
+    if (!layouts.getMainInputChannelSet().isDisabled())
         return false;
 
-    // All individual stem output buses (1 to 12) must be either disabled or stereo
+    // Master output must be stereo or mono
+    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo()
+        && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono())
+        return false;
+
+    // All individual stem output buses (1 to 12) must be either disabled, mono, or stereo
     for (int b = 1; b < layouts.outputBuses.size(); ++b)
     {
         const auto& bus = layouts.outputBuses.getReference (b);
-        if (!bus.isDisabled() && bus != juce::AudioChannelSet::stereo())
+        if (!bus.isDisabled() 
+            && bus != juce::AudioChannelSet::stereo() 
+            && bus != juce::AudioChannelSet::mono())
             return false;
     }
 
@@ -615,24 +622,30 @@ void ExtasisRhythmProcessor::resetSequencer() {
     }
 }
 
-void ExtasisRhythmProcessor::changePattern(int newPattern) {
-    if (!isInitialized || newPattern == currentPattern || newPattern < 0 || newPattern > 7) return;
-    for (int i = 0; i < 12; ++i) {
-        for (int s = 0; s < 32; ++s) {
-            if (auto* param = apvts.getRawParameterValue("step_" + juce::String(i) + "_" + juce::String(s)))
-                savedPatterns[currentPattern][i][s] = (int)(param->load());
+void ExtasisRhythmProcessor::changePattern (int newPattern) {
+    if (!isInitialized || newPattern < 0 || newPattern > 7) return;
+
+    // 1. Save active pattern values from APVTS if switching patterns
+    if (newPattern != currentPattern) {
+        for (int i = 0; i < 12; ++i) {
+            for (int s = 0; s < 32; ++s) {
+                if (auto* param = apvts.getRawParameterValue("step_" + juce::String(i) + "_" + juce::String(s)))
+                    savedPatterns[currentPattern][i][s] = (int)(param->load() + 0.5f);
+            }
         }
+        for (int s = 0; s < 16; ++s) {
+            if (auto* param = apvts.getRawParameterValue("fill_step_" + juce::String(s)))
+                savedFills[currentPattern][s] = (int)(param->load() + 0.5f);
+        }
+        currentPattern = newPattern;
     }
-    for (int s = 0; s < 16; ++s) {
-        if (auto* param = apvts.getRawParameterValue("fill_step_" + juce::String(s)))
-            savedFills[currentPattern][s] = (int)(param->load());
-    }
-    currentPattern = newPattern;
+
+    // 2. Load target pattern values into APVTS parameters
     for (int i = 0; i < 12; ++i) {
         for (int s = 0; s < 32; ++s) {
             if (auto* p = apvts.getParameter ("step_" + juce::String(i) + "_" + juce::String(s))) {
                 if (auto* rp = dynamic_cast<juce::RangedAudioParameter*>(p)) {
-                    rp->beginChangeGesture(); rp->setValueNotifyingHost (rp->convertTo0to1((float)savedPatterns[currentPattern][i][s])); rp->endChangeGesture();
+                    rp->setValueNotifyingHost (rp->convertTo0to1((float)savedPatterns[currentPattern][i][s]));
                 }
             }
         }
@@ -640,10 +653,43 @@ void ExtasisRhythmProcessor::changePattern(int newPattern) {
     for (int s = 0; s < 16; ++s) {
         if (auto* p = apvts.getParameter ("fill_step_" + juce::String(s))) {
             if (auto* rp = dynamic_cast<juce::RangedAudioParameter*>(p)) {
-                rp->beginChangeGesture(); rp->setValueNotifyingHost (rp->convertTo0to1((float)savedFills[currentPattern][s])); rp->endChangeGesture();
+                rp->setValueNotifyingHost (rp->convertTo0to1((float)savedFills[currentPattern][s]));
             }
         }
     }
+}
+
+void ExtasisRhythmProcessor::copyToNextPattern() {
+    if (!isInitialized) return;
+
+    // 1. Ensure current pattern steps are saved from APVTS
+    for (int i = 0; i < 12; ++i) {
+        for (int s = 0; s < 32; ++s) {
+            if (auto* param = apvts.getRawParameterValue("step_" + juce::String(i) + "_" + juce::String(s)))
+                savedPatterns[currentPattern][i][s] = (int)(param->load() + 0.5f);
+        }
+    }
+    for (int s = 0; s < 16; ++s) {
+        if (auto* param = apvts.getRawParameterValue("fill_step_" + juce::String(s)))
+            savedFills[currentPattern][s] = (int)(param->load() + 0.5f);
+    }
+
+    int nextPattern = (currentPattern + 1) % 8;
+
+    // 2. Deep copy current pattern data to next pattern
+    for (int i = 0; i < 12; ++i) {
+        for (int s = 0; s < 32; ++s) {
+            savedPatterns[nextPattern][i][s] = savedPatterns[currentPattern][i][s];
+            savedGlides[nextPattern][i][s]   = savedGlides[currentPattern][i][s];
+            savedNotes[nextPattern][i][s]    = savedNotes[currentPattern][i][s];
+        }
+    }
+    for (int s = 0; s < 16; ++s) {
+        savedFills[nextPattern][s] = savedFills[currentPattern][s];
+    }
+
+    // 3. Switch to next pattern
+    changePattern (nextPattern);
 }
 
 void ExtasisRhythmProcessor::getStateInformation (juce::MemoryBlock& destData) {
@@ -839,7 +885,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             auto* bus = getBus (false, b + 1);
             if (bus != nullptr && bus->isEnabled()) {
                 stemBuses[b] = getBusBuffer (buffer, false, b + 1);
-                stemBusEnabled[b] = (stemBuses[b].getNumChannels() >= 2);
+                stemBusEnabled[b] = (stemBuses[b].getNumChannels() > 0);
             }
         }
     }
@@ -1162,8 +1208,13 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
                 // Multi-Out Stem bus routing (Bypasses Master FX when routed separately in DAW)
                 if (stemBusEnabled[i]) {
-                    stemBuses[i].setSample (0, s, pannedL);
-                    stemBuses[i].setSample (1, s, pannedR);
+                    int numStemChans = stemBuses[i].getNumChannels();
+                    if (numStemChans >= 2) {
+                        stemBuses[i].setSample (0, s, pannedL);
+                        stemBuses[i].setSample (1, s, pannedR);
+                    } else if (numStemChans == 1) {
+                        stemBuses[i].setSample (0, s, 0.5f * (pannedL + pannedR));
+                    }
                 }
 
                 if (i == 0) {

@@ -388,38 +388,28 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
         );
     };
 
-    for (int p = 0; p < 4; ++p) {
-        addAndMakeVisible (patternPageButtons[p]);
-        patternPageButtons[p].setButtonText (juce::String (p + 1));
-        patternPageButtons[p].setClickingTogglesState (true);
-        patternPageButtons[p].setRadioGroupId(200);
-        patternPageButtons[p].setColour (juce::TextButton::buttonColourId, juce::Colour (0xffcccccc));
-        patternPageButtons[p].setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff3498db));
-        patternPageButtons[p].setColour (juce::TextButton::textColourOffId, juce::Colours::black);
-        patternPageButtons[p].setColour (juce::TextButton::textColourOnId, juce::Colours::white);
-        patternPageButtons[p].onClick = [this, p] { 
-            currentPatternPage = p; 
-            audioProcessor.changePattern (activePatternButton + (currentPatternPage * 8)); 
-        };
-    }
-    patternPageButtons[0].setToggleState(true, juce::dontSendNotification);
-
     juce::String pNames = "ABCDEFGH";
     for (int i = 0; i < 8; ++i) {
         addAndMakeVisible (patternButtons[i]); 
         patternButtons[i].setButtonText (juce::String::charToString(pNames[i])); 
-        patternButtons[i].setColour (juce::TextButton::buttonColourId, i == 0 ? juce::Colour (0xff3498db) : juce::Colour (0xffcccccc)); 
-        patternButtons[i].setColour (juce::TextButton::textColourOffId, juce::Colours::black); 
-        patternButtons[i].setColour (juce::TextButton::textColourOnId, juce::Colours::white);
         patternButtons[i].onClick = [this, i] {
-            for (int b = 0; b < 8; ++b) { 
-                patternButtons[b].setColour (juce::TextButton::buttonColourId, b == i ? juce::Colour (0xff3498db) : juce::Colour (0xffcccccc)); 
-                patternButtons[b].setColour (juce::TextButton::textColourOffId, juce::Colours::black); 
-            }
-            audioProcessor.changePattern (i + (currentPatternPage * 8)); 
-            activePatternButton = i;
+            audioProcessor.changePattern (i);
+            updatePatternButtonStates();
+            refreshAllStepButtons();
         };
     }
+    updatePatternButtonStates();
+
+    addAndMakeVisible (copyPatternButton);
+    copyPatternButton.setButtonText ("COPY >");
+    copyPatternButton.setTooltip ("Copy current pattern & paste to next pattern");
+    copyPatternButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffe67e22));
+    copyPatternButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+    copyPatternButton.onClick = [this] {
+        audioProcessor.copyToNextPattern();
+        updatePatternButtonStates();
+        refreshAllStepButtons();
+    };
 
     auto mkChannelKnob = [this] (juce::Slider& sl, std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>& at, const juce::String& id, juce::Colour col) {
         sl.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag); 
@@ -1078,6 +1068,29 @@ void ExtasisRhythmEditor::updateFillLengthLabel()
     fillLengthLabel.setText (juce::String (len), juce::dontSendNotification);
 }
 
+void ExtasisRhythmEditor::updatePatternButtonStates()
+{
+    int curPat = audioProcessor.getCurrentPattern();
+    activePatternButton = curPat;
+    for (int b = 0; b < 8; ++b) {
+        bool isActive = (b == curPat);
+        patternButtons[b].setColour (juce::TextButton::buttonColourId, isActive ? juce::Colour (0xff00d2ff) : juce::Colour (0xff222222));
+        patternButtons[b].setColour (juce::TextButton::textColourOffId, isActive ? juce::Colours::black : juce::Colours::white);
+    }
+}
+
+void ExtasisRhythmEditor::refreshAllStepButtons()
+{
+    for (int ch = 0; ch < 12; ++ch) {
+        for (int s = 0; s < 32; ++s) {
+            updateStepButtonVisuals (ch, s);
+        }
+    }
+    for (int s = 0; s < 16; ++s) {
+        updateFillButtonVisuals (s);
+    }
+}
+
 void ExtasisRhythmEditor::timerCallback() 
 { 
     bool isPlaying = (audioProcessor.isSyncedToHost.load() ? audioProcessor.hostPlaying.load() 
@@ -1453,12 +1466,9 @@ void ExtasisRhythmEditor::resized()
         int row = pIdx / 4; 
         int col = pIdx % 4;
         patternButtons[pIdx].setBounds (sz(patternX + 8 + (col * 27), 24 + (row * 24), 22, 20)); 
-        patternButtons[pIdx].setColour (juce::TextButton::textColourOffId, juce::Colours::black);
     }
     
-    for (int p = 0; p < 4; ++p) { 
-        patternPageButtons[p].setBounds (sz(patternX + 8 + (p * 27), 74, 22, 20)); 
-    }
+    copyPatternButton.setBounds (sz(patternX + 8, 74, 106, 22));
     
     saveKitButton.setBounds (sz(patternX + 8, 102, 51, 22)); 
     loadKitButton.setBounds (sz(patternX + 63, 102, 51, 22));

@@ -374,8 +374,12 @@ private:
 
     juce::TextButton patternButtons[8];
     juce::TextButton patternPageButtons[4];
+    juce::TextButton copyPatternButton;
     int currentPatternPage = 0;
     int activePatternButton = 0;
+
+    void updatePatternButtonStates();
+    void refreshAllStepButtons();
 
     juce::Slider masterVolSlider, masterClipperSlider;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> masterVolAtt, masterClipAtt;

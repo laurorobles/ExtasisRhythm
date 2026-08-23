@@ -64,6 +64,7 @@ public:
     void resetAllParameters();
     void resetSequencer();
     void changePattern (int newPattern);
+    void copyToNextPattern();
     int getCurrentPattern() const { return currentPattern; }
 
     void saveCustomPreset (const juce::File& file);

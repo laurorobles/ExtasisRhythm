@@ -34,7 +34,8 @@ juce_add_plugin(ExtasisRhythm
     COPY_PLUGIN_AFTER_BUILD TRUE
     PRODUCT_NAME "ExtasisRhythm"
     ICON_BIG "assets/icon.png"
-    ICON_SMALL "assets/icon.png")
+    ICON_SMALL "assets/icon.png"
+    VST3_CATEGORIES "Instrument" "Drum" "Synth")
 
 # Genera automáticamente el JuceHeader.h requerido por JUCE con CMake
 juce_generate_juce_header(ExtasisRhythm)
