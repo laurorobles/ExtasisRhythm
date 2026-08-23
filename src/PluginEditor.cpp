@@ -453,15 +453,6 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     mkEffectKnob (chorusRateSlider, chorusRateAtt, "chorusRate", juce::Colour (0xff2ecc71)); 
     mkEffectKnob (chorusDepthSlider, chorusDepthAtt, "chorusDepth", juce::Colour (0xff2ecc71));
 
-    addAndMakeVisible (fillTripletButton);
-    fillTripletButton.setLookAndFeel (&compactBtnLAF);
-    fillTripletButton.setButtonText ("3L");
-    fillTripletButton.setInterceptsMouseClicks (false, false);
-    fillTripletButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffcccccc));
-    fillTripletButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff9b59b6));
-    fillTripletButton.setColour (juce::TextButton::textColourOffId, juce::Colours::black);
-    fillTripletButton.setColour (juce::TextButton::textColourOnId, juce::Colours::white);
-
     addAndMakeVisible (fillFitButton);
     fillFitButton.setLookAndFeel (&compactBtnLAF);
     fillFitButton.setButtonText ("FIX");
@@ -676,16 +667,6 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
         envChannelButtons[i].setColour (juce::TextButton::textColourOffId, juce::Colours::black); 
         envChannelButtons[i].setColour (juce::TextButton::textColourOnId, juce::Colours::white); 
         envChanAtts[i] = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (audioProcessor.apvts, "envChan_" + chStr, envChannelButtons[i]);
-        
-        addAndMakeVisible (tripletButtons[i]); 
-        tripletButtons[i].setLookAndFeel (&compactBtnLAF);
-        tripletButtons[i].setButtonText ("3L"); 
-        tripletButtons[i].setInterceptsMouseClicks (false, false); 
-        tripletButtons[i].setColour (juce::TextButton::buttonColourId, juce::Colour (0xffcccccc)); 
-        tripletButtons[i].setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff9b59b6)); 
-        tripletButtons[i].setColour (juce::TextButton::textColourOffId, juce::Colours::black); 
-        tripletButtons[i].setColour (juce::TextButton::textColourOnId, juce::Colours::white);
-        
         addAndMakeVisible (fitButtons[i]); 
         fitButtons[i].setLookAndFeel (&compactBtnLAF);
         fitButtons[i].setButtonText ("FIX"); 
@@ -1059,8 +1040,6 @@ void ExtasisRhythmEditor::updateLengthLabel (int i)
     int len = (int) audioProcessor.apvts.getRawParameterValue ("length" + juce::String(i))->load(); 
     if (len <= 0) len = 16; 
     lengthLabels[i].setText (juce::String (len), juce::dontSendNotification); 
-    bool isTripletMetric = (len % 3 == 0);
-    tripletButtons[i].setToggleState (isTripletMetric, juce::dontSendNotification);
 }
 
 void ExtasisRhythmEditor::updateFillLengthLabel()
@@ -1068,8 +1047,6 @@ void ExtasisRhythmEditor::updateFillLengthLabel()
     int len = (int) audioProcessor.apvts.getRawParameterValue ("fillLength")->load();
     if (len <= 0) len = 16;
     fillLengthLabel.setText (juce::String (len), juce::dontSendNotification);
-    bool isTripletMetric = (len % 3 == 0);
-    fillTripletButton.setToggleState (isTripletMetric, juce::dontSendNotification);
 }
 
 void ExtasisRhythmEditor::timerCallback() 
@@ -1321,14 +1298,14 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
         int totalStepsWidth = seqW - controlsAreaWidth - 16;
         
         for (int i = 0; i < 12; ++i) {
-            g.setColour (juce::Colours::black.withAlpha(0.3f)); 
+            g.setColour (juce::Colours::black.withAlpha(0.4f)); 
             g.setFont (juce::FontOptions (9.5f, juce::Font::bold)); 
-            g.drawText (labels[i], seqX + 6, seqY + 8 + (i * 24), 58, 20, juce::Justification::left);
+            g.drawText (labels[i], seqX + 6, seqY + 8 + (i * 24), 74, 20, juce::Justification::centredLeft);
         }
         
-        g.setColour (juce::Colours::black.withAlpha(0.3f)); 
+        g.setColour (juce::Colours::black.withAlpha(0.4f)); 
         g.setFont (juce::FontOptions (9.5f, juce::Font::bold)); 
-        g.drawText ("FILL", seqX + 6, seqY + 10 + (12 * 24), 58, 20, juce::Justification::left);
+        g.drawText ("FILL", seqX + 6, seqY + 10 + (12 * 24), 74, 20, juce::Justification::centredLeft);
 
         int stepW_int = totalStepsWidth / 16; 
         int metricSteps[4] = { 0, 4, 8, 12 }; 
@@ -1530,7 +1507,6 @@ void ExtasisRhythmEditor::resized()
         int btnGap = (numSteps > 20) ? 2 : 4;
         int btnW_int = juce::jmax (2, stepW_int - btnGap);
 
-        tripletButtons[seqIdx].setVisible (isSequencerVisible); 
         fitButtons[seqIdx].setVisible (isSequencerVisible);
         seqModeButtons[seqIdx].setVisible (isSequencerVisible);
         minusButtons[seqIdx].setVisible (isSequencerVisible);
@@ -1540,15 +1516,14 @@ void ExtasisRhythmEditor::resized()
         shiftRightButtons[seqIdx].setVisible (isSequencerVisible);
 
         if (isSequencerVisible) {
-            int bx = seqX + 58;
-            tripletButtons[seqIdx].setBounds (sz(bx,        seqY + 8 + (seqIdx * 24), 20, 20)); 
-            fitButtons[seqIdx].setBounds     (sz(bx + 22,   seqY + 8 + (seqIdx * 24), 30, 20)); 
-            seqModeButtons[seqIdx].setBounds (sz(bx + 54,   seqY + 8 + (seqIdx * 24), 28, 20)); 
-            minusButtons[seqIdx].setBounds   (sz(bx + 84,   seqY + 8 + (seqIdx * 24), 16, 20)); 
-            lengthLabels[seqIdx].setBounds   (sz(bx + 101,  seqY + 8 + (seqIdx * 24), 18, 20)); 
-            plusButtons[seqIdx].setBounds    (sz(bx + 121,  seqY + 8 + (seqIdx * 24), 16, 20)); 
-            shiftLeftButtons[seqIdx].setBounds(sz(bx + 139,  seqY + 8 + (seqIdx * 24), 16, 20)); 
-            shiftRightButtons[seqIdx].setBounds(sz(bx + 157, seqY + 8 + (seqIdx * 24), 16, 20)); 
+            int bx = seqX + 80;
+            fitButtons[seqIdx].setBounds     (sz(bx,        seqY + 8 + (seqIdx * 24), 30, 20)); 
+            seqModeButtons[seqIdx].setBounds (sz(bx + 32,   seqY + 8 + (seqIdx * 24), 30, 20)); 
+            minusButtons[seqIdx].setBounds   (sz(bx + 64,   seqY + 8 + (seqIdx * 24), 16, 20)); 
+            lengthLabels[seqIdx].setBounds   (sz(bx + 81,   seqY + 8 + (seqIdx * 24), 18, 20)); 
+            plusButtons[seqIdx].setBounds    (sz(bx + 100,  seqY + 8 + (seqIdx * 24), 16, 20)); 
+            shiftLeftButtons[seqIdx].setBounds(sz(bx + 118, seqY + 8 + (seqIdx * 24), 16, 20)); 
+            shiftRightButtons[seqIdx].setBounds(sz(bx + 136,seqY + 8 + (seqIdx * 24), 16, 20)); 
         }
 
         for (int step = 0; step < 32; ++step) {
@@ -1565,7 +1540,6 @@ void ExtasisRhythmEditor::resized()
     int fixedStepWidthFill = gridAreaWidth / 16;
     int fillBtnW = juce::jmax (2, fixedStepWidthFill - 5);
 
-    fillTripletButton.setVisible (isSequencerVisible);
     fillFitButton.setVisible (isSequencerVisible);
     fillSeqModeButton.setVisible (isSequencerVisible);
     fillMinusButton.setVisible (isSequencerVisible);
@@ -1575,16 +1549,15 @@ void ExtasisRhythmEditor::resized()
     fillShiftRightButton.setVisible (isSequencerVisible);
 
     if (isSequencerVisible) {
-        int bx = seqX + 58;
+        int bx = seqX + 80;
         int by = seqY + 10 + (12 * 24);
-        fillTripletButton.setBounds   (sz(bx,       by, 20, 20));
-        fillFitButton.setBounds       (sz(bx + 22,  by, 30, 20));
-        fillSeqModeButton.setBounds   (sz(bx + 54,  by, 28, 20));
-        fillMinusButton.setBounds     (sz(bx + 84,  by, 16, 20));
-        fillLengthLabel.setBounds     (sz(bx + 101, by, 18, 20));
-        fillPlusButton.setBounds      (sz(bx + 121, by, 16, 20));
-        fillShiftLeftButton.setBounds (sz(bx + 139, by, 16, 20));
-        fillShiftRightButton.setBounds(sz(bx + 157, by, 16, 20));
+        fillFitButton.setBounds       (sz(bx,       by, 30, 20));
+        fillSeqModeButton.setBounds   (sz(bx + 32,  by, 30, 20));
+        fillMinusButton.setBounds     (sz(bx + 64,  by, 16, 20));
+        fillLengthLabel.setBounds     (sz(bx + 81,  by, 18, 20));
+        fillPlusButton.setBounds      (sz(bx + 100, by, 16, 20));
+        fillShiftLeftButton.setBounds (sz(bx + 118, by, 16, 20));
+        fillShiftRightButton.setBounds(sz(bx + 136, by, 16, 20));
     }
 
     for (int step = 0; step < 16; ++step) {

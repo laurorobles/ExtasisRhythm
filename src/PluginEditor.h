@@ -389,11 +389,11 @@ private:
     juce::Slider chorusRateSlider, chorusDepthSlider;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> chorusRateAtt, chorusDepthAtt;
 
-    juce::TextButton tripletFillButton, fillFitButton;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tripletFillAtt, fillFitAtt;
+    juce::TextButton fillFitButton;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> fillFitAtt;
     
     juce::TextButton fillStepButtons[16];
-    juce::TextButton fillTripletButton, fillSeqModeButton, fillMinusButton, fillPlusButton, fillShiftLeftButton, fillShiftRightButton;
+    juce::TextButton fillSeqModeButton, fillMinusButton, fillPlusButton, fillShiftLeftButton, fillShiftRightButton;
     juce::Label fillLengthLabel;
     juce::Slider hiddenFillLengthSlider;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> fillLengthAtt;
@@ -403,7 +403,7 @@ private:
     juce::ComboBox sampleVariantSelectors[12];
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> sampleSourceAtts[12];
 
-    juce::TextButton muteButtons[12], soloButtons[12], envChannelButtons[12], tripletButtons[12], fitButtons[12];
+    juce::TextButton muteButtons[12], soloButtons[12], envChannelButtons[12], fitButtons[12];
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> muteAtts[12], soloAtts[12], envChanAtts[12], fitAtts[12];
 
     juce::Slider volumeSliders[12], panSliders[12], pitchSliders[12], toneSliders[12];

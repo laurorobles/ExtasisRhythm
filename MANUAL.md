@@ -109,27 +109,27 @@ Extasis Rhythm cuenta con 12 tiras de canal idénticas y dedicadas para cada voz
 Ubicado en la mitad inferior de la interfaz. Cada uno de los 12 canales posee su propio motor de secuenciación independiente.
 
 ### 🎛️ Controles por Carril:
-* **Etiqueta del Canal**: Identificador visual del instrumento.
-* **`3L` (Triplet Toggle)**: Conmuta la métrica del carril a subdivisión de tresillo (base 12/24 pasos).
+* **Etiqueta del Canal**: Identificador visual del instrumento con tipografía amplia y sin solapamiento (ej. `CLOSED HAT`, `RIMSHOT`, `HI PERC`).
 * **`FIX` / `FIT` (Modo de Rejilla)**:
   * **`FIX` (Fixed Time Grid)**: Los pasos tienen una duración estándar fija de semicorchea (1/16).
-  * **`FIT` (Polyrhythmic Metric Scaling)**: Escala y comprime la cantidad de pasos seleccionada (hasta 32 pasos normales o 24 tresillos) para que quepan exactamente en la duración de un compás de 4/4. Esto permite generar polirritmias reales (ej. 5 contra 4, 7 contra 4, 11 contra 16) sincronizadas al compás maestro.
+  * **`FIT` (Polyrhythmic Metric Scaling)**: Escala y comprime la cantidad de pasos seleccionada (hasta 32 pasos) para que quepan exactamente en la duración de un compás de 4/4. Esto permite generar polirritmias reales (ej. 5 contra 4, 7 contra 4, 11 contra 16) sincronizadas al compás maestro.
 * **`MODE` (Modos de Reproducción)**:
   * **`FWD` (Forward)**: Reproducción lineal tradicional (0 → 1 → 2 → 3...).
   * **`REV` (Reverse)**: Reproducción en reversa hacia atrás (15 → 14 → 13... o `N-1` a 0).
   * **`RND` (Random)**: Selección aleatoria de paso en cada pulso de reloj (patrones generativos / no repetitivos).
   * **`PNB` (Ping-Pong)**: Modo péndulo de ida y vuelta (0 → 1 → 2 → 3 → 2 → 1 → 0...).
 * **`-` / `+` & Display de Longitud**: Configura la longitud métrica activa del canal (de 1 a 32 pasos).
+* **`<` / `>` (Track Shift / Rotación de Pasos)**: Rota todos los pasos, notas y glides del carril hacia la izquierda o derecha en tiempo real.
 * **Botones de Pasos**:
   * **Clic Izquierdo Cíclico**:
-    * *Nivel 1 (Azul Intenso)*: Acento / Velocidad máxima (`1.0`).
-    * *Nivel 2 (Azul Medio)*: Velocidad normal (`0.7`).
-    * *Nivel 3 (Azul Suave)*: Ghost Note / Velocidad baja (`0.4`).
+    * *Nivel 1 (Naranja / Acento)*: Acento / Velocidad máxima (`1.0`).
+    * *Nivel 2 (Amarillo)*: Velocidad media (`0.7`).
+    * *Nivel 3 (Amarillo Suave)*: Ghost Note / Velocidad baja (`0.4`).
     * *Nivel 4 (Gris)*: Paso apagado (`0.0`).
   * **Clic Derecho / Note Pitch Lock & Glide**:
     * Permite fijar afinaciones melódicas por paso y activar ligaduras de portamento (*Glide*, representado con una barra diagonal azul cian).
 * **Cursor de Transporte Activo**:
-  * Indicador rectangular relleno en azul semitransparente con borde sólido que recorre la rejilla en tiempo real indicando la posición exacta de lectura.
+  * Indicador rectangular azul semitransparente con borde brillante que recorre la rejilla en tiempo real indicando la posición exacta de lectura.
 
 ---
 
