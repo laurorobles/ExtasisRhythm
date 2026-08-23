@@ -1,29 +1,25 @@
 #!/bin/bash
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 echo "============================================================"
-echo "🥁 EXTASIS RHYTHM — macOS Automated Installer"
+echo " ExtasisRhythm - macOS Automated Installer"
 echo "============================================================"
 
-echo "📁 [1/3] Installing Sample Library to ~/Documents/ExtasisRhythm_Samples..."
-mkdir -p "$HOME/Documents/ExtasisRhythm_Samples"
-if [ -d "$DIR/ExtasisRhythm_Samples" ]; then
-    cp -R "$DIR/ExtasisRhythm_Samples/"* "$HOME/Documents/ExtasisRhythm_Samples/"
+INSTALL_DIR="$(cd "$(dirname "$0")" && pwd)"
+VST3_DIR="/Library/Audio/Plug-Ins/VST3"
+AU_DIR="/Library/Audio/Plug-Ins/Components"
+
+echo "[1/2] Installing VST3 Plugin to $VST3_DIR..."
+sudo mkdir -p "$VST3_DIR"
+if [ -d "$INSTALL_DIR/ExtasisRhythm.vst3" ]; then
+    sudo cp -R "$INSTALL_DIR/ExtasisRhythm.vst3" "$VST3_DIR/"
 fi
 
-echo "🎹 [2/3] Installing VST3 Plugin to ~/Library/Audio/Plug-Ins/VST3/..."
-mkdir -p "$HOME/Library/Audio/Plug-Ins/VST3"
-if [ -d "$DIR/ExtasisRhythm.vst3" ]; then
-    rm -rf "$HOME/Library/Audio/Plug-Ins/VST3/ExtasisRhythm.vst3"
-    cp -R "$DIR/ExtasisRhythm.vst3" "$HOME/Library/Audio/Plug-Ins/VST3/"
-fi
-
-echo "💻 [3/3] Installing Standalone App to /Applications/..."
-if [ -d "$DIR/ExtasisRhythm.app" ]; then
-    rm -rf "/Applications/ExtasisRhythm.app"
-    cp -R "$DIR/ExtasisRhythm.app" "/Applications/"
+echo "[2/2] Installing AU Plugin to $AU_DIR..."
+sudo mkdir -p "$AU_DIR"
+if [ -d "$INSTALL_DIR/ExtasisRhythm.component" ]; then
+    sudo cp -R "$INSTALL_DIR/ExtasisRhythm.component" "$AU_DIR/"
 fi
 
 echo ""
 echo "============================================================"
-echo "✅ Installation Complete! Extasis Rhythm is ready to use."
+echo " Installation Complete! Open your DAW and rescan plugins."
 echo "============================================================"

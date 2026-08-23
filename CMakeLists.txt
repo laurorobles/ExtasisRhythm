@@ -61,3 +61,10 @@ target_link_libraries(ExtasisRhythm PRIVATE
     juce::juce_opengl
     juce_recommended_config_flags
 )
+# Custom post-build step to guarantee installation and app icon
+add_custom_command(TARGET ExtasisRhythm_Standalone POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/icon.icns"
+        "$<TARGET_BUNDLE_DIR:ExtasisRhythm_Standalone>/Contents/Resources/Icon.icns"
+    COMMENT "Copying icon.icns to Standalone app bundle"
+)

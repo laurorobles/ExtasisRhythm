@@ -1,21 +1,16 @@
 @echo off
 setlocal
 echo ============================================================
-echo  EXTASIS RHYTHM - Windows Automated Installer
+echo  ExtasisRhythm - Windows Automated Installer
 echo ============================================================
 
 set "INSTALL_DIR=%~dp0"
+set "VST3_DIR=%COMMONPROGRAMFILES%\VST3"
 
-echo [1/2] Installing Sample Library to %USERPROFILE%\Documents\ExtasisRhythm_Samples...
-if not exist "%USERPROFILE%\Documents\ExtasisRhythm_Samples" mkdir "%USERPROFILE%\Documents\ExtasisRhythm_Samples"
-if exist "%INSTALL_DIR%ExtasisRhythm_Samples" (
-    xcopy /E /I /Y /Q "%INSTALL_DIR%ExtasisRhythm_Samples" "%USERPROFILE%\Documents\ExtasisRhythm_Samples"
-)
-
-echo [2/2] Installing VST3 Plugin to C:\Program Files\Common Files\VST3...
-if not exist "C:\Program Files\Common Files\VST3" mkdir "C:\Program Files\Common Files\VST3"
+echo [1/1] Installing VST3 Plugin to %VST3_DIR%...
+if not exist "%VST3_DIR%" mkdir "%VST3_DIR%"
 if exist "%INSTALL_DIR%ExtasisRhythm.vst3" (
-    xcopy /E /I /Y /Q "%INSTALL_DIR%ExtasisRhythm.vst3" "C:\Program Files\Common Files\VST3\ExtasisRhythm.vst3"
+    xcopy /E /I /Y /Q "%INSTALL_DIR%ExtasisRhythm.vst3" "%VST3_DIR%\ExtasisRhythm.vst3"
 )
 
 echo.
