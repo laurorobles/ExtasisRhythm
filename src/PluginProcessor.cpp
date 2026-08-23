@@ -244,6 +244,8 @@ void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
     lastHostStep = -1; internalElapsedBeats = 0.0; lastFillSubStep = -1;
     for (int i = 0; i < 12; ++i) { lastSubStep[i] = -1; fadeOld[i] = 0.0f; channelStepSemitones[i] = 0.0f; }
     
+    updateLicenseStatus();
+    demoSamplesElapsed.store (0);
     initializeParameterPointers();
     killAllAudio();
 
@@ -653,12 +655,32 @@ void ExtasisRhythmProcessor::loadCustomPreset(const juce::File& file) {
     juce::MemoryBlock mb; if (file.loadFileAsData(mb)) setStateInformation(mb.getData(), (int)mb.getSize());
 }
 
+void ExtasisRhythmProcessor::updateLicenseStatus()
+{
+    isLicensedCached.store (LicenseManager::isLicensed());
+    if (isLicensedCached.load())
+    {
+        demoExpired.store (false);
+    }
+}
+
 void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) {
     auto startTime = juce::Time::getHighResolutionTicks(); 
 
     juce::ScopedNoDenormals noDenormals; 
     buffer.clear(); 
     if (currentSampleRate <= 0.0) return;
+
+    if (!isLicensedCached.load()) {
+        int64_t currentElapsed = demoSamplesElapsed.load();
+        int64_t maxDemoSamples = (int64_t)(currentSampleRate * 600.0); // 10 minutes (600s)
+        if (currentElapsed >= maxDemoSamples) {
+            demoExpired.store (true);
+            return;
+        } else {
+            demoSamplesElapsed.store (currentElapsed + buffer.getNumSamples());
+        }
+    }
     
     for (int i = 0; i < 12; ++i) { int c = flashCounters[i].load(); if (c > 0) flashCounters[i] = c - 1; }
     for (const auto meta : midi) { auto msg = meta.getMessage(); if (msg.isNoteOn()) triggerChannel (msg.getNoteNumber() - 36, msg.getFloatVelocity()); }

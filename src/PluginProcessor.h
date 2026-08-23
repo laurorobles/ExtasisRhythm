@@ -48,6 +48,11 @@ public:
     void setSamplesFolder (const juce::File& folder);
     static juce::File getConfigFile();
 
+    void updateLicenseStatus();
+    std::atomic<bool> isLicensedCached { false };
+    std::atomic<int64_t> demoSamplesElapsed { 0 };
+    std::atomic<bool> demoExpired { false };
+
     void triggerChannel (int ch, float vel);
     void killAllAudio();
     void resetAllParameters();

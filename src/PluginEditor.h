@@ -225,6 +225,8 @@ public:
     std::function<void(const juce::String&)> onActivate;
     std::function<void()> onContinueDemo;
 
+    bool isExpired = false;
+
     juce::TextEditor licenseInput;
     juce::TextButton activateButton;
     juce::TextButton demoButton;
@@ -280,7 +282,7 @@ public:
         g.setGradientFill (cardGrad);
         g.fillRoundedRectangle ((float)modalX, (float)modalY, (float)modalW, (float)modalH, 12.0f);
 
-        g.setColour (juce::Colour (0xff00d2ff).withAlpha (0.9f));
+        g.setColour (isExpired ? juce::Colour (0xffff5252).withAlpha (0.9f) : juce::Colour (0xff00d2ff).withAlpha (0.9f));
         g.drawRoundedRectangle ((float)modalX, (float)modalY, (float)modalW, (float)modalH, 12.0f, 1.5f);
 
         g.setColour (juce::Colour (0xff21252b));
@@ -290,17 +292,18 @@ public:
         g.drawHorizontalLine (modalY + 45, (float)modalX, (float)(modalX + modalW));
 
         g.setFont (juce::FontOptions (15.0f, juce::Font::bold));
-        g.setColour (juce::Colour (0xff00d2ff));
+        g.setColour (isExpired ? juce::Colour (0xffff5252) : juce::Colour (0xff00d2ff));
         g.drawText ("EXTASIS RHYTHM", modalX + 20, modalY + 12, 160, 22, juce::Justification::left);
         
         g.setFont (juce::FontOptions (12.0f, juce::Font::plain));
         g.setColour (juce::Colour (0xffdcdde1));
-        g.drawText ("— Product Activation", modalX + 165, modalY + 13, 200, 22, juce::Justification::left);
+        g.drawText (isExpired ? "— Demo Expired" : "— Product Activation", modalX + 165, modalY + 13, 200, 22, juce::Justification::left);
 
-        g.setFont (juce::FontOptions (11.5f, juce::Font::plain));
-        g.setColour (juce::Colour (0xffc8d6e5));
-        g.drawText ("Please enter your 16-character license key to unlock the full version:",
-                    modalX + 30, modalY + 58, modalW - 60, 18, juce::Justification::centred);
+        g.setFont (juce::FontOptions (11.5f, isExpired ? juce::Font::bold : juce::Font::plain));
+        g.setColour (isExpired ? juce::Colour (0xffff6b6b) : juce::Colour (0xffc8d6e5));
+        g.drawText (isExpired ? "Demo evaluation period has expired (10 minutes).\nEnter your license key to unlock and continue making music:"
+                              : "Please enter your 16-character license key to unlock the full version:",
+                    modalX + 20, modalY + 54, modalW - 40, 26, juce::Justification::centred);
 
         g.setFont (juce::FontOptions (9.5f, juce::Font::plain));
         g.setColour (juce::Colour (0xff718093));
@@ -316,8 +319,17 @@ public:
         int modalY = (getHeight() - modalH) / 2;
 
         licenseInput.setBounds (modalX + 45, modalY + 86, modalW - 90, 32);
-        activateButton.setBounds (modalX + 45, modalY + 130, 195, 32);
-        demoButton.setBounds (modalX + 260, modalY + 130, 195, 32);
+        if (isExpired)
+        {
+            activateButton.setBounds (modalX + 120, modalY + 130, modalW - 240, 32);
+            demoButton.setVisible (false);
+        }
+        else
+        {
+            activateButton.setBounds (modalX + 45, modalY + 130, 195, 32);
+            demoButton.setBounds (modalX + 260, modalY + 130, 195, 32);
+            demoButton.setVisible (true);
+        }
         statusLabel.setBounds (modalX + 30, modalY + 172, modalW - 60, 24);
     }
 };

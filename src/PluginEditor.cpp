@@ -948,6 +948,7 @@ ExtasisRhythmEditor::~ExtasisRhythmEditor() = default;
 void ExtasisRhythmEditor::updateLicenseState()
 {
     isActivated = LicenseManager::isLicensed();
+    audioProcessor.updateLicenseStatus();
     licenseBadgeButton.setVisible (!isActivated);
     if (!isActivated)
     {
@@ -1073,13 +1074,31 @@ void ExtasisRhythmEditor::timerCallback()
             playButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff2ecc71)); 
             playButton.setButtonText ("HOST SYNC"); 
         } else { 
-            playButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffb0b0b0)); 
-            playButton.setButtonText ("HOST STOP"); 
+            playButton.setColour (juce::TextButton::buttonColourId, isPlaying ? juce::Colour (0xff3498db) : juce::Colour (0xffb0b0b0)); 
+            playButton.setButtonText (isPlaying ? "PLAYING" : "PLAY");
         }
     } else {
         playButton.setColour (juce::TextButton::buttonColourId, isPlaying ? juce::Colour (0xff3498db) : juce::Colour (0xffb0b0b0)); 
         playButton.setButtonText (isPlaying ? "PLAYING" : "PLAY");
     }
+
+    if (!isActivated)
+    {
+        if (audioProcessor.demoExpired.load())
+        {
+            if (!showActivationModal || !activationOverlay.isExpired)
+            {
+                showActivationModal = true;
+                activationOverlay.isExpired = true;
+                activationOverlay.statusLabel.setText ("Demo time limit reached (10 min). Enter license key to continue.", juce::dontSendNotification);
+                activationOverlay.statusLabel.setColour (juce::Label::textColourId, juce::Colour (0xffff4444));
+                activationOverlay.setVisible (true);
+                activationOverlay.toFront (true);
+                resized();
+            }
+        }
+    }
+
     repaint(); 
 }
 

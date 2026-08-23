@@ -225,14 +225,17 @@ El centro de control maestro y salida final:
 4. **Guardar y respaldar proyectos**:
    - Utiliza el botón **`SAVE`** para exportar tu archivo `.xml`. El archivo preserva todas las asignaciones de samples, patrones A-H, fills y configuraciones de knobs.
 
-## 10. 🔑 ACTIVACIÓN DE LICENCIA
+## 10. 🔑 MODO DEMO & ACTIVACIÓN DE LICENCIA
 
-Extasis Rhythm cuenta con un sistema de verificación criptográfica offline.
-* **Activación en el Plugin**:
-  1. Al iniciar el plugin por primera vez o en modo demo, haz clic en el botón naranja **`ACTIVATE`** en la cabecera superior.
+Extasis Rhythm cuenta con un sistema de verificación criptográfica offline y evaluación demo:
+* **Modo Demo (Evaluación de 10 minutos)**:
+  - Si el plugin no ha sido activado con una licencia, permite una evaluación completa del motor sonoro y secuenciador durante **10 minutos continuos**.
+  - Al cumplirse los 10 minutos, la salida de audio se silencia automáticamente y se despliega la ventana de activación requiriendo el serial de compra para continuar.
+* **Activación de Licencia Permanente**:
+  1. Al iniciar el plugin por primera vez, o al expirar la demo, haz clic en el botón naranja **`ACTIVATE`** (o en la ventana modal).
   2. Pega tu clave oficial de 16 caracteres (formato: `EXTR-XXXX-XXXX-XXXX-XXXX`).
   3. Haz clic en **`ACTIVATE LICENSE`**.
-  4. Una vez activado, el diálogo y el botón de activación desaparecen, y el plugin queda permanentemente desbloqueado en tu estación de trabajo.
+  4. Una vez activado, el diálogo y el botón de activación desaparecen por completo, y el plugin queda permanentemente desbloqueado de por vida en tu estación de trabajo.
 
 ---
 *Extasis Rhythm v2.0 — Diseñado para la creación rítmica sin límites.*
