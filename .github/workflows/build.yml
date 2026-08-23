@@ -62,6 +62,15 @@ jobs:
               break
             fi
           done
+          if [ -d "ExtasisRhythm_Samples" ]; then
+            cp -r ExtasisRhythm_Samples artifacts/
+          fi
+          if [ -f "installer/INSTALL_WINDOWS.bat" ]; then
+            cp installer/INSTALL_WINDOWS.bat artifacts/
+          fi
+          if [ -f "MANUAL.md" ]; then
+            cp MANUAL.md artifacts/
+          fi
 
       - name: Prepare macOS Artifacts
         if: runner.os == 'macOS'
@@ -80,6 +89,16 @@ jobs:
               break
             fi
           done
+          if [ -d "ExtasisRhythm_Samples" ]; then
+            cp -r ExtasisRhythm_Samples artifacts/
+          fi
+          if [ -f "installer/INSTALL_MAC.command" ]; then
+            cp installer/INSTALL_MAC.command artifacts/
+            chmod +x artifacts/INSTALL_MAC.command
+          fi
+          if [ -f "MANUAL.md" ]; then
+            cp MANUAL.md artifacts/
+          fi
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
