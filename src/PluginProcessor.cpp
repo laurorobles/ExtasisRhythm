@@ -651,21 +651,24 @@ void ExtasisRhythmProcessor::getStateInformation (juce::MemoryBlock& destData) {
         for (int i = 0; i < 12; ++i) {
             for (int s = 0; s < 32; ++s) {
                 if (auto* param = apvts.getRawParameterValue("step_" + juce::String(i) + "_" + juce::String(s)))
-                    savedPatterns[currentPattern][i][s] = (int)(param->load());
+                    savedPatterns[currentPattern][i][s] = (int)(param->load() + 0.5f);
             }
         }
         for (int s = 0; s < 16; ++s) {
             if (auto* param = apvts.getRawParameterValue("fill_step_" + juce::String(s)))
-                savedFills[currentPattern][s] = (int)(param->load());
+                savedFills[currentPattern][s] = (int)(param->load() + 0.5f);
         }
     }
     auto state = apvts.copyState();
     std::unique_ptr<juce::XmlElement> xml (state.createXml());
+    
+    // Save Sequencer Patterns, Glides, Note Locks, and Playback Modes
     auto patternsXml = new juce::XmlElement("PATTERNS");
-    for (int p=0; p<8; ++p) {
-        for (int i=0; i<12; ++i) {
+    patternsXml->setAttribute("CURRENT_PATTERN", currentPattern);
+    for (int p = 0; p < 8; ++p) {
+        for (int i = 0; i < 12; ++i) {
             juce::String stepData, glideData, noteData;
-            for (int s=0; s<32; ++s) {
+            for (int s = 0; s < 32; ++s) {
                 stepData += juce::String(savedPatterns[p][i][s]) + ",";
                 glideData += juce::String(savedGlides[p][i][s]) + ",";
                 noteData += juce::String(savedNotes[p][i][s]) + ",";
@@ -675,13 +678,25 @@ void ExtasisRhythmProcessor::getStateInformation (juce::MemoryBlock& destData) {
             patternsXml->setAttribute("P" + juce::String(p) + "_CH" + juce::String(i) + "_NOTE", noteData);
         }
         juce::String fillData;
-        for (int s=0; s<16; ++s) fillData += juce::String(savedFills[p][s]) + ",";
+        for (int s = 0; s < 16; ++s) fillData += juce::String(savedFills[p][s]) + ",";
         patternsXml->setAttribute("P" + juce::String(p) + "_FILLS", fillData);
     }
+    for (int i = 0; i < 12; ++i) {
+        patternsXml->setAttribute("SEQ_MODE_CH" + juce::String(i), seqModes[i].load());
+    }
+    patternsXml->setAttribute("FILL_SEQ_MODE", fillSeqMode.load());
     xml->addChildElement(patternsXml);
 
+    // Save Exact Sample Kit and Sample Variant for each channel
     auto samplesXml = new juce::XmlElement("SAMPLES");
-    for (int i = 0; i < 12; ++i) samplesXml->setAttribute("CH" + juce::String(i), currentSampleName[i]);
+    for (int i = 0; i < 12; ++i) {
+        int chKit = (int)apvts.getRawParameterValue("sampleSource_" + juce::String(i))->load();
+        samplesXml->setAttribute("CH" + juce::String(i) + "_SAMPLE", currentSampleName[i]);
+        samplesXml->setAttribute("CH" + juce::String(i) + "_KIT_IDX", chKit);
+        if (chKit >= 0 && chKit < drumFolders.size()) {
+            samplesXml->setAttribute("CH" + juce::String(i) + "_KIT_NAME", drumFolders[chKit].getFileName());
+        }
+    }
     xml->addChildElement(samplesXml);
 
     copyXmlToBinary (*xml, destData);
@@ -690,32 +705,86 @@ void ExtasisRhythmProcessor::getStateInformation (juce::MemoryBlock& destData) {
 void ExtasisRhythmProcessor::setStateInformation (const void* data, int sizeInBytes) {
     std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
     if (xmlState != nullptr) {
-        if (xmlState->hasTagName (apvts.state.getType())) apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
+        if (xmlState->hasTagName (apvts.state.getType())) {
+            apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
+        }
+
         if (auto* patternsXml = xmlState->getChildByName("PATTERNS")) {
-            for (int p=0; p<8; ++p) {
-                for (int i=0; i<12; ++i) {
+            currentPattern = patternsXml->getIntAttribute ("CURRENT_PATTERN", 0);
+            for (int p = 0; p < 8; ++p) {
+                for (int i = 0; i < 12; ++i) {
                     juce::StringArray steps;
                     steps.addTokens(patternsXml->getStringAttribute("P" + juce::String(p) + "_CH" + juce::String(i)), ",", "");
-                    for (int s=0; s<32 && s<steps.size(); ++s) savedPatterns[p][i][s] = steps[s].getIntValue();
+                    for (int s = 0; s < 32 && s < steps.size(); ++s) savedPatterns[p][i][s] = steps[s].getIntValue();
 
                     juce::StringArray glides;
                     glides.addTokens(patternsXml->getStringAttribute("P" + juce::String(p) + "_CH" + juce::String(i) + "_GLIDE"), ",", "");
-                    for (int s=0; s<32 && s<glides.size(); ++s) savedGlides[p][i][s] = glides[s].getIntValue();
+                    for (int s = 0; s < 32 && s < glides.size(); ++s) savedGlides[p][i][s] = glides[s].getIntValue();
 
                     juce::StringArray notes;
                     notes.addTokens(patternsXml->getStringAttribute("P" + juce::String(p) + "_CH" + juce::String(i) + "_NOTE"), ",", "");
-                    for (int s=0; s<32 && s<notes.size(); ++s) savedNotes[p][i][s] = notes[s].getIntValue();
+                    for (int s = 0; s < 32 && s < notes.size(); ++s) savedNotes[p][i][s] = notes[s].getIntValue();
                 }
                 juce::StringArray fills;
                 fills.addTokens(patternsXml->getStringAttribute("P" + juce::String(p) + "_FILLS"), ",", "");
-                for (int s=0; s<16 && s<fills.size(); ++s) savedFills[p][s] = fills[s].getIntValue();
+                for (int s = 0; s < 16 && s < fills.size(); ++s) savedFills[p][s] = fills[s].getIntValue();
+            }
+            for (int i = 0; i < 12; ++i) {
+                if (patternsXml->hasAttribute("SEQ_MODE_CH" + juce::String(i)))
+                    seqModes[i].store (patternsXml->getIntAttribute("SEQ_MODE_CH" + juce::String(i), 0));
+            }
+            if (patternsXml->hasAttribute("FILL_SEQ_MODE"))
+                fillSeqMode.store (patternsXml->getIntAttribute("FILL_SEQ_MODE", 0));
+        }
+
+        if (auto* samplesXml = xmlState->getChildByName("SAMPLES")) {
+            for (int i = 0; i < 12; ++i) {
+                juce::String sName = samplesXml->getStringAttribute("CH" + juce::String(i) + "_SAMPLE");
+                if (sName.isEmpty()) sName = samplesXml->getStringAttribute("CH" + juce::String(i)); // backward compatibility
+
+                int kitIdx = samplesXml->getIntAttribute("CH" + juce::String(i) + "_KIT_IDX", -1);
+                if (kitIdx < 0) {
+                    kitIdx = (int)apvts.getRawParameterValue("sampleSource_" + juce::String(i))->load();
+                }
+                
+                // Match by kit folder name if available
+                if (samplesXml->hasAttribute("CH" + juce::String(i) + "_KIT_NAME")) {
+                    juce::String kitName = samplesXml->getStringAttribute("CH" + juce::String(i) + "_KIT_NAME");
+                    for (int k = 0; k < drumFolders.size(); ++k) {
+                        if (drumFolders[k].getFileName().equalsIgnoreCase (kitName)) {
+                            kitIdx = k;
+                            break;
+                        }
+                    }
+                }
+
+                if (kitIdx >= 0 && kitIdx < drumFolders.size() && sName.isNotEmpty()) {
+                    loadSampleForChannel (i, kitIdx, sName);
+                } else if (drumFolders.size() > 0) {
+                    loadSmartSampleForChannel (i, 0);
+                }
             }
         }
-        if (auto* samplesXml = xmlState->getChildByName("SAMPLES")) {
-            int kitIdx = (int)apvts.getRawParameterValue("globalKitChoice")->load();
-            for (int i = 0; i < 12; ++i) {
-                juce::String sName = samplesXml->getStringAttribute("CH" + juce::String(i));
-                if (sName.isNotEmpty()) loadSampleForChannel(i, kitIdx, sName);
+
+        // Apply current pattern parameters
+        for (int i = 0; i < 12; ++i) {
+            for (int s = 0; s < 32; ++s) {
+                if (auto* p = apvts.getParameter ("step_" + juce::String(i) + "_" + juce::String(s))) {
+                    if (auto* rp = dynamic_cast<juce::RangedAudioParameter*>(p)) {
+                        rp->beginChangeGesture();
+                        rp->setValueNotifyingHost (rp->convertTo0to1((float)savedPatterns[currentPattern][i][s]));
+                        rp->endChangeGesture();
+                    }
+                }
+            }
+        }
+        for (int s = 0; s < 16; ++s) {
+            if (auto* p = apvts.getParameter ("fill_step_" + juce::String(s))) {
+                if (auto* rp = dynamic_cast<juce::RangedAudioParameter*>(p)) {
+                    rp->beginChangeGesture();
+                    rp->setValueNotifyingHost (rp->convertTo0to1((float)savedFills[currentPattern][s]));
+                    rp->endChangeGesture();
+                }
             }
         }
     }

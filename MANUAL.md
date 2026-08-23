@@ -222,8 +222,14 @@ El centro de control maestro y salida final:
 3. **Lograr el sonido Hip-Hop clásico Golden Era de 12 bits**:
    - Activa el botón **`12B`** en el Master Bus.
    - Sube ligeramente el knob **`PITCH`** de los instrumentos y luego afínalos hacia abajo en el canal para obtener el característico grano crujiente del SP-1200.
-4. **Guardar y respaldar proyectos**:
-   - Utiliza el botón **`SAVE`** para exportar tu archivo `.xml`. El archivo preserva todas las asignaciones de samples, patrones A-H, fills y configuraciones de knobs.
+4. **Guardar y Cargar Presets Completos (`SAVE` / `LOAD`)**:
+   - Haz clic en **`SAVE`** para guardar tu kit, mezclas y patrones en la carpeta dedicada `Documents/ExtasisRhythm_Presets/` en formato `.xml`.
+   - **Qué almacena un Preset**:
+     * Selección de kits y samples personalizados de cada uno de los 12 canales.
+     * Los 8 patrones de ritmo completos (A a H) con sus velocidades, afinaciones por paso (*Note Locks*), *Glides* y carril de *Fill*.
+     * Modos de reproducción del secuenciador (`FWD`, `REV`, `RND`, `PNB`) y longitudes (`FIT`).
+     * Todos los knobs de los canales (Volumen, Paneo, Tono, Envolvente, Spring, Delay) y la configuración del Master Bus.
+   - Haz clic en **`LOAD`** para cargar cualquier preset guardado; la interfaz y el motor sonoro se sincronizan automáticamente al instante.
 
 ## 10. 🔑 MODO DEMO & ACTIVACIÓN DE LICENCIA
 

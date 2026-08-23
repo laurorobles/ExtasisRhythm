@@ -250,30 +250,58 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
         resized();
     };
 
-    saveKitButton.onClick = [this] { 
-        saveChooser = std::make_unique<juce::FileChooser> ("Save Project", juce::File::getSpecialLocation(juce::File::userHomeDirectory), "*.xml"); 
-        saveChooser->launchAsync (juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles, [this] (const juce::FileChooser& c) { 
-            if (c.getResult() != juce::File()) audioProcessor.saveCustomPreset(c.getResult()); 
+    auto getPresetsFolder = []() -> juce::File {
+        auto folder = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("ExtasisRhythm_Presets");
+        if (!folder.exists()) folder.createDirectory();
+        return folder;
+    };
+
+    saveKitButton.onClick = [this, getPresetsFolder] { 
+        saveChooser = std::make_unique<juce::FileChooser> ("Save Extasis Rhythm Preset", getPresetsFolder(), "*.xml"); 
+        saveChooser->launchAsync (juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::warnAboutOverwriting, [this] (const juce::FileChooser& c) { 
+            auto file = c.getResult();
+            if (file != juce::File()) {
+                if (!file.hasFileExtension(".xml")) file = file.withFileExtension(".xml");
+                audioProcessor.saveCustomPreset (file); 
+            }
         }); 
     };
     
-    loadKitButton.onClick = [this] { 
-        loadChooser = std::make_unique<juce::FileChooser> ("Load Project", juce::File::getSpecialLocation(juce::File::userHomeDirectory), "*.xml"); 
+    loadKitButton.onClick = [this, getPresetsFolder] { 
+        loadChooser = std::make_unique<juce::FileChooser> ("Load Extasis Rhythm Preset", getPresetsFolder(), "*.xml"); 
         loadChooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [this] (const juce::FileChooser& c) { 
-            if (c.getResult() != juce::File()) {
-                audioProcessor.loadCustomPreset(c.getResult());
+            auto file = c.getResult();
+            if (file != juce::File() && file.existsAsFile()) {
+                audioProcessor.loadCustomPreset (file);
+
                 int globalKit = (int)audioProcessor.apvts.getRawParameterValue("globalKitChoice")->load();
-                globalKitSelector.setSelectedId(globalKit + 1, juce::dontSendNotification);
+                globalKitSelector.setSelectedId (globalKit + 1, juce::dontSendNotification);
+
                 for (int i = 0; i < 12; ++i) {
                     int chKit = (int)audioProcessor.apvts.getRawParameterValue("sampleSource_" + juce::String(i))->load();
-                    sampleSourceSelectors[i].setSelectedId(chKit + 1, juce::dontSendNotification);
-                    sampleVariantSelectors[i].clear(juce::dontSendNotification);
-                    auto variants = audioProcessor.getVariantsForChannel(chKit, i);
-                    sampleVariantSelectors[i].addItemList(variants, 1);
-                    int matchIdx = variants.indexOf(audioProcessor.currentSampleName[i]);
-                    sampleVariantSelectors[i].setSelectedId(matchIdx >= 0 ? matchIdx + 1 : 1, juce::dontSendNotification);
+                    sampleSourceSelectors[i].setSelectedId (chKit + 1, juce::dontSendNotification);
+                    sampleVariantSelectors[i].clear (juce::dontSendNotification);
+                    auto variants = audioProcessor.getVariantsForChannel (chKit, i);
+                    sampleVariantSelectors[i].addItemList (variants, 1);
+                    int matchIdx = variants.indexOf (audioProcessor.currentSampleName[i]);
+                    sampleVariantSelectors[i].setSelectedId (matchIdx >= 0 ? matchIdx + 1 : 1, juce::dontSendNotification);
+
+                    int mode = audioProcessor.seqModes[i].load();
+                    seqModeButtons[i].setButtonText (mode == 1 ? "REV" : (mode == 2 ? "RND" : (mode == 3 ? "PNB" : "FWD")));
                 }
+
+                int fMode = audioProcessor.fillSeqMode.load();
+                fillSeqModeButton.setButtonText (fMode == 1 ? "REV" : (fMode == 2 ? "RND" : (fMode == 3 ? "PNB" : "FWD")));
+
+                int curPat = audioProcessor.getCurrentPattern();
+                for (int p = 0; p < 8; ++p) {
+                    patternButtons[p].setColour (juce::TextButton::buttonColourId, (p == curPat) ? juce::Colour(0xff00d2ff) : juce::Colour(0xff222222));
+                    patternButtons[p].setColour (juce::TextButton::textColourOffId, (p == curPat) ? juce::Colours::black : juce::Colours::white);
+                }
+
                 updateFillLengthLabel();
+                resized();
+                repaint();
             }
         }); 
     };
