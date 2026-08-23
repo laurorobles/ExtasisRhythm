@@ -174,3 +174,6 @@ Extasis Rhythm features **13 Audio Output Buses**:
 
 ---
 *Extasis Rhythm Architecture Documentation — Extasis Records 2026.*
+
+
+> **Licencias:** Consigue tu licencia oficial en [http://laurorobles.gumroad.com](http://laurorobles.gumroad.com)

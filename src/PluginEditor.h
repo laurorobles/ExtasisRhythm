@@ -348,6 +348,8 @@ public:
     void mouseDown (const juce::MouseEvent& e) override;
 
 private:
+    juce::HyperlinkButton gumroadLinkBtn { "BUY LICENSE", juce::URL("http://laurorobles.gumroad.com") };
+
     ExtasisRhythmProcessor& audioProcessor;
 
     juce::TooltipWindow tooltipWindow { this, 400 }; 

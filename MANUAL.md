@@ -365,3 +365,6 @@ flowchart TD
 
 ---
 *Extasis Rhythm v2.0 — Diseñado para la creación rítmica sin límites.*
+
+
+> **Licencias:** Consigue tu licencia oficial en [http://laurorobles.gumroad.com](http://laurorobles.gumroad.com)

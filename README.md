@@ -139,3 +139,6 @@ Compiled binaries will be generated in:
 
 - **DSP Architecture & Development**: Lauro Robles
 - **Label & Releases**: [Extasis Records](https://extasisrecords.bandcamp.com)
+
+
+> **Licencias:** Consigue tu licencia oficial en [http://laurorobles.gumroad.com](http://laurorobles.gumroad.com)

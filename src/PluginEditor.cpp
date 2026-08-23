@@ -62,6 +62,9 @@ public:
 ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     : AudioProcessorEditor (&proc), audioProcessor (proc) 
 {
+    addAndMakeVisible(gumroadLinkBtn);
+    gumroadLinkBtn.setColour(juce::HyperlinkButton::textColourId, juce::Colours::yellow);
+
     setResizable (true, true); 
     getConstrainer()->setFixedAspectRatio (1192.0f / 812.0f);
     getConstrainer()->setMinimumSize (900, 612);
@@ -242,7 +245,9 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
         resized();
     }; 
 
-    seqResetButton.onClick = [this] { 
+    seqResetButton.onClick = [this] {
+    gumroadLinkBtn.setBounds(getWidth() - 110, 10, 100, 24);
+ 
         audioProcessor.resetSequencer(); 
         fillFitButton.setToggleState (false, juce::dontSendNotification);
         fillFitButton.setButtonText ("FIX");

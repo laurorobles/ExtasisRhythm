@@ -108,6 +108,8 @@ public:
     std::atomic<float> channelStepSemitones[12];
 
 private:
+    uint64_t samplesProcessed = 0;
+
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioFormatManager formatManager;
 
