@@ -50,13 +50,13 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts
-          for path in "build/ExtasisRhythm_artefacts/VST3/Extasis Rhythm.vst3" "build/ExtasisRhythm_artefacts/Release/VST3/Extasis Rhythm.vst3"; do
+          for path in "build/ExtasisRhythm_artefacts/VST3/ExtasisRhythm.vst3" "build/ExtasisRhythm_artefacts/Release/VST3/ExtasisRhythm.vst3" "build/ExtasisRhythm_artefacts/VST3/Extasis Rhythm.vst3" "build/ExtasisRhythm_artefacts/Release/VST3/Extasis Rhythm.vst3"; do
             if [ -d "$path" ]; then
               cp -r "$path" artifacts/
               break
             fi
           done
-          for path in "build/ExtasisRhythm_artefacts/Standalone/Extasis Rhythm.exe" "build/ExtasisRhythm_artefacts/Release/Standalone/Extasis Rhythm.exe"; do
+          for path in "build/ExtasisRhythm_artefacts/Standalone/ExtasisRhythm.exe" "build/ExtasisRhythm_artefacts/Release/Standalone/ExtasisRhythm.exe" "build/ExtasisRhythm_artefacts/Standalone/Extasis Rhythm.exe" "build/ExtasisRhythm_artefacts/Release/Standalone/Extasis Rhythm.exe"; do
             if [ -f "$path" ]; then
               cp "$path" artifacts/
               break
@@ -68,13 +68,13 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts
-          for path in "build/ExtasisRhythm_artefacts/VST3/Extasis Rhythm.vst3" "build/ExtasisRhythm_artefacts/Release/VST3/Extasis Rhythm.vst3"; do
+          for path in "build/ExtasisRhythm_artefacts/VST3/ExtasisRhythm.vst3" "build/ExtasisRhythm_artefacts/Release/VST3/ExtasisRhythm.vst3" "build/ExtasisRhythm_artefacts/VST3/Extasis Rhythm.vst3" "build/ExtasisRhythm_artefacts/Release/VST3/Extasis Rhythm.vst3"; do
             if [ -d "$path" ]; then
               cp -r "$path" artifacts/
               break
             fi
           done
-          for path in "build/ExtasisRhythm_artefacts/Standalone/Extasis Rhythm.app" "build/ExtasisRhythm_artefacts/Release/Standalone/Extasis Rhythm.app"; do
+          for path in "build/ExtasisRhythm_artefacts/Standalone/ExtasisRhythm.app" "build/ExtasisRhythm_artefacts/Release/Standalone/ExtasisRhythm.app" "build/ExtasisRhythm_artefacts/Standalone/Extasis Rhythm.app" "build/ExtasisRhythm_artefacts/Release/Standalone/Extasis Rhythm.app"; do
             if [ -d "$path" ]; then
               cp -r "$path" artifacts/
               break
