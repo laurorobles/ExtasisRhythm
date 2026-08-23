@@ -57,12 +57,12 @@ Ubicada en la parte superior izquierda de la interfaz, gobierna el transporte gl
 
 ## 3. MÓDULO DE PATRONES (PATTERNS)
 
-Gestiona la memoria de patrones musicales para estructurar canciones completas en vivo o en estudio.
+Gestiona la memoria de patrones musicales para estructurar canciones completas y variaciones rítmicas en vivo o en estudio.
 
-* **Páginas de Banco (`1`, `2`, `3`, `4`)**: Conmuta entre 4 bancos de memoria.
-* **Botones de Patrón (`A` a `H`)**: 8 patrones individuales por banco (dando un total de **32 patrones completos**).
-* **Conmutación Ininterrumpida**: El cambio de patrón ocurre instantáneamente manteniendo la fase del transporte sin clics ni pérdidas de sincronía.
-* **Memoria No Volátil**: Los pasos, velocidades, glides, semitonos y configuraciones de longitud de cada patrón se almacenan internamente y se serializan con el estado del plugin/DAW.
+* **Botones de Patrón (`A` a `H`)**: 8 patrones completos independientes. Cada uno almacena su propia secuencia de 32 pasos por canal, dinámicas (*velocities*), afinaciones por paso (*Note Locks*), *Glides* y carril de *Fill*.
+* **`COPY >` (Copiar al Siguiente Patrón)**: Clona instantáneamente el patrón actualmente activo (todos los 12 canales, notas, glides y fills) al siguiente patrón (`A ➔ B`, `B ➔ C`, etc.) y conmuta automáticamente a él para continuar evolucionando el ritmo sin interrupciones.
+* **Conmutación Fluida e Instantánea**: El cambio entre patrones ocurre al vuelo, manteniendo la fase del compás y refrescando de inmediato la visualización de la cuadrícula de pasos.
+* **Memoria No Volátil**: Todos los 8 patrones se guardan automáticamente dentro de tus proyectos de DAW y al exportar con el botón **`SAVE`**.
 
 ---
 
@@ -232,6 +232,9 @@ El centro de control maestro y salida final:
      * Modos de reproducción del secuenciador (`FWD`, `REV`, `RND`, `PNB`) y longitudes (`FIT`).
      * Todos los knobs de los canales (Volumen, Paneo, Tono, Envolvente, Spring, Delay) y la configuración del Master Bus.
    - Haz clic en **`LOAD`** para cargar cualquier preset guardado; la interfaz y el motor sonoro se sincronizan automáticamente al instante.
+5. **Empaquetado y Distribución de Releases**:
+   - Para generar un paquete instalador completo para macOS con un solo clic, ejecuta en la terminal `./create_release_zip_macos.sh`. El archivo resultante `dist/ExtasisRhythm-macOS.zip` contiene el plugin VST3, la aplicación Standalone, la librería completa de samples, el manual y el instalador automático.
+   - En GitHub Actions, cada actualización genera automáticamente los instaladores para Windows y macOS listos para descargar.
 
 ## 10. 🔑 MODO DEMO & ACTIVACIÓN DE LICENCIA
 

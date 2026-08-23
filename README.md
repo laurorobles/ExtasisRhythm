@@ -50,7 +50,9 @@
 * **Hermite Cubic Resampling Engine**:
   - 4-point continuous polynomial interpolation for clean, artifact-free pitch transposition ($\pm 12$ semitones).
 * **Polyrhythmic Step Sequencer**:
-  - Independent track lengths (1 to 32 steps).
+  - Independent track lengths (1 to 32 steps) across all 12 channels.
+  - **8 Independent Patterns (A to H)** with instant smooth switching.
+  - **`COPY >` (Copy to Next Pattern)**: 1-click clone and evolve workflow.
   - Metric scaling modes: **`FIX`** (standard 16th grid) and **`FIT`** (polyrhythmic metric compression over 4/4 bars).
   - Playback directions per channel: **`FWD`** (Forward), **`REV`** (Reverse), **`RND`** (Random generative), **`PNB`** (Ping-Pong / Pendulum).
   - 3 dynamic velocity levels per step, pitch transposition locks, and portamento **`Glide`**.
