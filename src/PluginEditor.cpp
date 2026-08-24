@@ -572,6 +572,9 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
                 p->endChangeGesture();
             }
         }
+        for (int s = 0; s < 16; ++s) {
+            updateFillButtonVisuals (s);
+        }
     };
 
     addAndMakeVisible (fillShiftRightButton);
@@ -597,6 +600,9 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
                 p->setValueNotifyingHost (p->convertTo0to1 ((float)vals[s]));
                 p->endChangeGesture();
             }
+        }
+        for (int s = 0; s < 16; ++s) {
+            updateFillButtonVisuals (s);
         }
     };
     updateFillLengthLabel();
@@ -785,6 +791,9 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
                     p->endChangeGesture();
                 }
             }
+            for (int s = 0; s < 32; ++s) {
+                updateStepButtonVisuals (i, s);
+            }
         };
 
         addAndMakeVisible (shiftRightButtons[i]);
@@ -831,6 +840,9 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
                     p->setValueNotifyingHost (p->convertTo0to1((float)vals[s]));
                     p->endChangeGesture();
                 }
+            }
+            for (int s = 0; s < 32; ++s) {
+                updateStepButtonVisuals (i, s);
             }
         };
 
@@ -1590,7 +1602,7 @@ void ExtasisRhythmEditor::resized()
         shiftRightButtons[seqIdx].setVisible (isSequencerVisible);
 
         if (isSequencerVisible) {
-            int bx = seqX + 68;
+            int bx = seqX + 64;
             fitButtons[seqIdx].setBounds     (sz(bx,        seqY + 8 + (seqIdx * 24), 34, 20)); 
             seqModeButtons[seqIdx].setBounds (sz(bx + 36,   seqY + 8 + (seqIdx * 24), 34, 20)); 
             minusButtons[seqIdx].setBounds   (sz(bx + 72,   seqY + 8 + (seqIdx * 24), 18, 20)); 
@@ -1623,7 +1635,7 @@ void ExtasisRhythmEditor::resized()
     fillShiftRightButton.setVisible (isSequencerVisible);
 
     if (isSequencerVisible) {
-        int bx = seqX + 68;
+        int bx = seqX + 64;
         int by = seqY + 10 + (12 * 24);
         fillFitButton.setBounds       (sz(bx,       by, 34, 20));
         fillSeqModeButton.setBounds   (sz(bx + 36,  by, 34, 20));

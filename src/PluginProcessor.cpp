@@ -896,10 +896,17 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     
     for (const auto meta : incomingMidi) { 
         auto msg = meta.getMessage(); 
-        if (msg.isNoteOn()) {
-            int ch = getChannelForMidiNote (msg.getNoteNumber());
-            if (ch >= 0 && ch < 12) {
+        int ch = getChannelForMidiNote (msg.getNoteNumber());
+        if (ch >= 0 && ch < 12) {
+            if (msg.isNoteOn()) {
                 triggerChannel (ch, msg.getFloatVelocity());
+                juce::MidiMessage outMsg = msg;
+                outMsg.setChannel (ch + 1);
+                midi.addEvent (outMsg, meta.samplePosition);
+            } else if (msg.isNoteOff()) {
+                juce::MidiMessage outMsg = msg;
+                outMsg.setChannel (ch + 1);
+                midi.addEvent (outMsg, meta.samplePosition);
             }
         }
     }
