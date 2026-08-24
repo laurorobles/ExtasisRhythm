@@ -1,30 +1,32 @@
-# Build directories
-build/
-build-mac/
-bin/
-obj/
-*.DS_Store
+# Build artifacts (regenerable - do NOT commit)
+/build/
+/build_artefacts/
+/dist/
+*.zip
 
-# IDE specific files
+# macOS metadata
+.DS_Store
+
+# CMake cache
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# IDE
 .vscode/
 .idea/
-.continue/
 *.xcodeproj/
-*.sln
-*.vcxproj
-*.suo
-*.user
+*.xcworkspace/
 
-# JUCE / Binary artifacts
-juce_build/
-*.vst3
-*.component
-*.clap
-*.standalone
+# Compiled objects
+*.o
+*.a
+*.d
+*.dylib
+*.so
+*.dll
 
-# Private Licensing & Secrets (Local Only)
-generate_license.py
-serials*.txt
-*.key
-license*.txt
-dist/
+# JUCE generated (if using FetchContent, do not commit JUCE folder)
+/_deps/
+
