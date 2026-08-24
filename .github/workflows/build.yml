@@ -150,9 +150,9 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "ExtasisRhythm v3.0.0"
+          name: "ExtasisRhythm ${{ github.ref_name }}"
           body: |
-            ### 🚀 Lanzamiento Oficial v3.0.0
+            ### 🚀 Lanzamiento Oficial ${{ github.ref_name }}
             
             Este release incluye los binarios e instaladores oficiales para **ExtasisRhythm** en Windows, macOS y Linux.
             
