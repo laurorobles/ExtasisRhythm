@@ -62,8 +62,8 @@ public:
 ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     : AudioProcessorEditor (&proc), audioProcessor (proc) 
 {
-    addAndMakeVisible(gumroadLinkBtn);
-    gumroadLinkBtn.setColour(juce::HyperlinkButton::textColourId, juce::Colours::yellow);
+    
+    
 
     setResizable (true, true); 
     getConstrainer()->setFixedAspectRatio (1192.0f / 812.0f);
@@ -246,8 +246,6 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     }; 
 
     seqResetButton.onClick = [this] {
-    gumroadLinkBtn.setBounds(getWidth() - 110, 10, 100, 24);
- 
         audioProcessor.resetSequencer(); 
         fillFitButton.setToggleState (false, juce::dontSendNotification);
         fillFitButton.setButtonText ("FIX");
@@ -1185,10 +1183,6 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
     g.setFont (juce::FontOptions (10.0f, juce::Font::bold)); 
     g.setColour (juce::Colour (0xff333333)); 
     g.drawText ("coded by @laurorobles", 16, 45, 180, 14, juce::Justification::left);
-    
-    g.setFont (juce::FontOptions (9.5f, juce::Font::plain)); 
-    g.setColour (juce::Colour (0xff666666)); 
-    g.drawText ("extasisrecords.bandcamp.com", 16, 60, 200, 14, juce::Justification::left);
 
     if (logoImage.isValid())
     {

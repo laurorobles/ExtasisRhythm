@@ -231,6 +231,7 @@ public:
     juce::TextButton activateButton;
     juce::TextButton demoButton;
     juce::Label statusLabel;
+    juce::HyperlinkButton gumroadLinkBtn { "BUY LICENSE", juce::URL ("http://laurorobles.gumroad.com") };
 
     ActivationOverlayComponent()
     {
@@ -263,6 +264,9 @@ public:
         addAndMakeVisible (statusLabel);
         statusLabel.setFont (juce::FontOptions (11.5f, juce::Font::bold));
         statusLabel.setJustificationType (juce::Justification::centred);
+
+        addAndMakeVisible (gumroadLinkBtn);
+        gumroadLinkBtn.setColour (juce::HyperlinkButton::textColourId, juce::Colour (0xff00d2ff));
     }
 
     void paint (juce::Graphics& g) override
@@ -304,11 +308,6 @@ public:
         g.drawText (isExpired ? "Demo evaluation period has expired (10 minutes).\nEnter your license key to unlock and continue making music:"
                               : "Please enter your 16-character license key to unlock the full version:",
                     modalX + 20, modalY + 54, modalW - 40, 26, juce::Justification::centred);
-
-        g.setFont (juce::FontOptions (9.5f, juce::Font::plain));
-        g.setColour (juce::Colour (0xff718093));
-        g.drawText ("extasisrecords.bandcamp.com",
-                    modalX + 20, modalY + modalH - 24, modalW - 40, 16, juce::Justification::centred);
     }
 
     void resized() override
@@ -331,6 +330,7 @@ public:
             demoButton.setVisible (true);
         }
         statusLabel.setBounds (modalX + 30, modalY + 172, modalW - 60, 24);
+        gumroadLinkBtn.setBounds (modalX + (modalW - 140) / 2, modalY + modalH - 26, 140, 18);
     }
 };
 
@@ -348,7 +348,6 @@ public:
     void mouseDown (const juce::MouseEvent& e) override;
 
 private:
-    juce::HyperlinkButton gumroadLinkBtn { "BUY LICENSE", juce::URL("http://laurorobles.gumroad.com") };
 
     ExtasisRhythmProcessor& audioProcessor;
 
