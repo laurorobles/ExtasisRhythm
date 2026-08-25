@@ -1263,21 +1263,32 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                 auto* fillParam = cachedParams.fillStepParams[mappedFillStep];
                 int fillV = (fillParam != nullptr) ? (int)(fillParam->load() + 0.5f) : 0;
                 if (fillV > 0) {
+                    // 1. Buscar el instante más reciente en el que algún canal haya sonado
                     double maxBeat = -1.0;
                     for (int i = 0; i < 12; ++i) {
                         if (lastFiredBeat[i].load() > maxBeat) {
                             maxBeat = lastFiredBeat[i].load();
                         }
                     }
+
+                    // 2. Repetir todos los instrumentos que compartan ese último instante
                     for (int ch = 0; ch < 12; ++ch) {
                         if (sampleBuffers[ch] != nullptr) {
-                            int curS = channelSteps[ch].load();
-                            int pat = getCurrentPattern();
-                            channelStepSemitones[ch] = (float)savedNotes[pat][ch][curS];
+                            // Tolerancia para absorber desajustes por polirritmos (0.02 beats)
+                            if (maxBeat >= 0.0 && std::abs(lastFiredBeat[ch].load() - maxBeat) < 0.02) {
+                                
+                                channelStepSemitones[ch] = lastFiredSemitone[ch].load();
+                                float fillVel = (fillV == 1) ? 0.4f : (fillV == 2 ? 0.7f : 1.0f);
+                                triggerChannel(ch, fillVel);
 
-                            auto* stepParam = cachedParams.stepParams[ch][curS];
-                            int stepV = (stepParam != nullptr) ? (int)(stepParam->load() + 0.5f) : 0;
-                            if (stepV > 0) triggerChannel(ch, stepV == 1 ? 0.4f : (stepV == 2 ? 0.7f : 1.0f));
+                                // Salida MIDI de la repetición
+                                int targetNote = juce::jlimit(0, 127, getMidiNoteForChannel(ch) + (int)channelStepSemitones[ch].load());
+                                if (activeMidiNotes[ch] >= 0) {
+                                    midi.addEvent(juce::MidiMessage::noteOff(ch + 1, activeMidiNotes[ch]), s);
+                                }
+                                midi.addEvent(juce::MidiMessage::noteOn(ch + 1, targetNote, fillVel), s);
+                                activeMidiNotes[ch] = targetNote;
+                            }
                         }
                     }
                 }
