@@ -1144,10 +1144,15 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                 } else mappedFillStep = fillSubStep % numFillSteps;
                 
                 if (mappedFillStep < 0) mappedFillStep += numFillSteps;
-                fillSeqPos = mappedFillStep;
+                
+                // ---BLINDAJE ANTICRASH ---
+                fillSeqPos = juce::jlimit(0, 15, mappedFillStep);
+                // -------------------------
             }
 
-            auto* fillParam = cachedParams.fillStepParams[fillSeqPos];
+            // Asegurarnos de que el índice jamás rebase los 16 elementos del array
+            int safeFillIndex = juce::jlimit(0, 15, fillSeqPos);
+            auto* fillParam = cachedParams.fillStepParams[safeFillIndex];
             int currentFillV = (fillParam != nullptr) ? (int)(fillParam->load() + 0.5f) : 0;
             
             int ratchets = (currentFillV == 1) ? 2 : ((currentFillV == 2) ? 3 : 1);
