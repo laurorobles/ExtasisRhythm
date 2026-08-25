@@ -1121,7 +1121,12 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         if (playing) {
             bool fillTriplet = (cachedParams.tripletFill != nullptr && cachedParams.tripletFill->load() > 0.5f);
             bool fillFit = (cachedParams.fillFit != nullptr && cachedParams.fillFit->load() > 0.5f);
-            int numFillSteps = juce::jlimit(1, 16, (int)(cachedParams.fillLength != nullptr ? cachedParams.fillLength->load() : 16.0f));
+            
+            // Blindaje seguro para la longitud del fill
+            int numFillSteps = 16;
+            if (cachedParams.fillLength != nullptr) {
+                numFillSteps = juce::jlimit(1, 16, (int)cachedParams.fillLength->load());
+            }
             
             double fillMult = fillFit ? ((double)numFillSteps / 4.0) : (fillTriplet ? 3.0 : 4.0);
             double fillSubStepD = exactBeats * fillMult; 
@@ -1145,19 +1150,25 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                 
                 if (mappedFillStep < 0) mappedFillStep += numFillSteps;
                 
-                // ---BLINDAJE ANTICRASH ---
+                // Asegurar estricto rango de 0 a 15
                 fillSeqPos = juce::jlimit(0, 15, mappedFillStep);
-                // -------------------------
             }
 
-            // Asegurarnos de que el índice jamás rebase los 16 elementos del array
             int safeFillIndex = juce::jlimit(0, 15, fillSeqPos);
-            auto* fillParam = cachedParams.fillStepParams[safeFillIndex];
-            int currentFillV = (fillParam != nullptr) ? (int)(fillParam->load() + 0.5f) : 0;
+            
+            // --- BLINDAJE DE PUNTERO NULO PARA EVITAR CRASH EN ABLETON ---
+            int currentFillV = 0;
+            if (cachedParams.fillStepParams[safeFillIndex] != nullptr) {
+                currentFillV = (int)(cachedParams.fillStepParams[safeFillIndex]->load() + 0.5f);
+            }
+            // -------------------------------------------------------------
             
             int ratchets = (currentFillV == 1) ? 2 : ((currentFillV == 2) ? 3 : 1);
 
             for (int ch = 0; ch < 12; ++ch) {
+                // Blindaje contra punteros de audio vacíos
+                if (localSamples[ch] == nullptr) continue;
+                
                 int maxLen = (int) (cachedParams.lengthParams[ch] != nullptr ? cachedParams.lengthParams[ch]->load() : 16.0f);
                 int numSteps = chanFit[ch] ? juce::jlimit(1, 32, maxLen > 0 ? maxLen : 16) : (chanTriplet[ch] ? juce::jlimit(1, 24, maxLen > 0 ? maxLen : 12) : juce::jlimit(1, 32, maxLen > 0 ? maxLen : 16));
 
