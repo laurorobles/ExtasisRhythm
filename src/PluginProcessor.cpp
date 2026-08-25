@@ -115,6 +115,7 @@ ExtasisRhythmProcessor::ExtasisRhythmProcessor()
         for (int s=0; s<16; ++s) savedFills[p][s] = 0;
     }
 
+    globalEventCounter.store(0);
     for (int i=0; i<12; ++i) { 
         samplePositions[i] = -1.0; 
         samplePositionsOld[i] = -1.0;
@@ -122,14 +123,13 @@ ExtasisRhythmProcessor::ExtasisRhythmProcessor()
         channelVelocities[i] = 1.0f; 
         channelSteps[i] = 0;
         channelStepSemitones[i] = 0.0f;
-        lastFiredBeat[i] = -1.0;
+        channelLastEvent[i] = 0;
         lastFiredSemitone[i] = 0.0f;
         currentSampleName.add("");
         lastSubStep[i] = -1;
         seqModes[i] = 0;
         seqPingDir[i] = 1;
         seqPingPos[i] = 0;
-        
     }
     
     int defaultKitIdx = 0;
@@ -314,16 +314,13 @@ void ExtasisRhythmProcessor::changeProgramName (int index, const juce::String& n
 
 bool ExtasisRhythmProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const 
 {
-    // Synth has no inputs
     if (!layouts.getMainInputChannelSet().isDisabled())
         return false;
 
-    // Master output must be stereo or mono
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo()
         && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono())
         return false;
 
-    // All individual stem output buses (1 to 12) must be either disabled, mono, or stereo
     for (int b = 1; b < layouts.outputBuses.size(); ++b)
     {
         const auto& bus = layouts.outputBuses.getReference (b);
@@ -338,36 +335,22 @@ bool ExtasisRhythmProcessor::isBusesLayoutSupported (const BusesLayout& layouts)
 
 int ExtasisRhythmProcessor::getChannelForMidiNote (int noteNum)
 {
-    // Primary Octave: C3 (60) to B3 (71)
-    // Ch 0 (Kick): C3 (60), Ch 1 (Snare): C#3 (61), Ch 2 (Closed Hat): D3 (62), etc.
-    if (noteNum >= 60 && noteNum <= 71)
-        return noteNum - 60;
-
-    // Octave Fallbacks:
-    // C2 (48) to B2 (59)
-    if (noteNum >= 48 && noteNum <= 59)
-        return noteNum - 48;
-
-    // C1 (36) to B1 (47)
-    if (noteNum >= 36 && noteNum <= 47)
-        return noteNum - 36;
-
-    // General MIDI Drum Map legacy fallback
+    if (noteNum >= 60 && noteNum <= 71) return noteNum - 60;
+    if (noteNum >= 48 && noteNum <= 59) return noteNum - 48;
+    if (noteNum >= 36 && noteNum <= 47) return noteNum - 36;
     switch (noteNum)
     {
-        case 35: return 0;  // Acoustic Bass Drum
-        case 40: return 1;  // Electric Snare
-        case 44: return 2;  // Pedal Hi-Hat
-        case 57: return 10; // Crash 2
-        case 59: return 11; // Ride 2
+        case 35: return 0; 
+        case 40: return 1; 
+        case 44: return 2; 
+        case 57: return 10;
+        case 59: return 11;
     }
-
     return -1;
 }
 
 int ExtasisRhythmProcessor::getMidiNoteForChannel (int ch)
 {
-    // 12 channels chromatically starting at C3 (MIDI note 60)
     if (ch >= 0 && ch < 12) return 60 + ch;
     return 60;
 }
@@ -382,13 +365,20 @@ juce::String ExtasisRhythmProcessor::getMidiNoteNameForChannel (int ch)
 }
 
 void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
-      currentSamplesPerBlock = bs;
+    currentSamplesPerBlock = bs;
     lastHostStep = -1; internalElapsedBeats = 0.0; lastFillSubStep = -1;
-    for (int i = 0; i < 12; ++i) { lastSubStep[i] = -1; fadeOld[i] = 0.0f; channelStepSemitones[i] = 0.0f; }
+    globalEventCounter.store(0);
     
     updateLicenseStatus();
     demoSamplesElapsed.store (0);
+
     for (int i = 0; i < 12; ++i) {
+        lastSubStep[i] = -1; 
+        fadeOld[i] = 0.0f; 
+        channelStepSemitones[i] = 0.0f; 
+        channelLastEvent[i] = 0;
+        lastFiredSemitone[i] = 0.0f;
+
         volSmoother[i].reset(sr, 0.01);
         panSmoother[i].reset(sr, 0.01);
         pitchSmoother[i].reset(sr, 0.01);
@@ -396,13 +386,6 @@ void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
     }
 
     initializeParameterPointers();
-    for (int i = 0; i < 12; ++i) {
-        volSmoother[i].reset(sr, 0.01);
-        panSmoother[i].reset(sr, 0.01);
-        pitchSmoother[i].reset(sr, 0.01);
-        cutSmoother[i].reset(sr, 0.01);
-    }
-
     killAllAudio();
 
     juce::dsp::ProcessSpec spec { sr, (uint32_t)bs, 2 };
@@ -449,7 +432,6 @@ void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
 }
 
 void ExtasisRhythmProcessor::releaseResources() {
-    
     for (int i=0; i<12; ++i) { juce::SpinLock::ScopedLockType sl(pointerLock); sampleBuffers[i] = nullptr; }
 }
 
@@ -484,19 +466,16 @@ void ExtasisRhythmProcessor::loadSampleForChannel(int ch, int folderIndex, const
         auto* reader = formatManager.createReaderFor(sample);
         if (reader) {
             int numSamps = (int) reader->lengthInSamples;
-            double fileSr = reader->sampleRate; // Leemos la resolución y velocidad original del sample
+            double fileSr = reader->sampleRate;
             juce::AudioBuffer<float> tempBuffer ((int) reader->numChannels, numSamps);
             reader->read(&tempBuffer, 0, numSamps, 0, true, true);
             delete reader;
-            
             
             auto newBuf = new SampleBuffer(std::move(tempBuffer), fileSr > 0.0 ? fileSr : 44100.0);
             {
                 juce::SpinLock::ScopedLockType sl(pointerLock);
                 sampleBuffers[ch] = newBuf;
             }
-            
-            
             currentSampleName.set(ch, fileName);
         }
     }
@@ -525,7 +504,6 @@ void ExtasisRhythmProcessor::loadSmartSampleForChannel(int i, int kit) {
                 exactMatch = true;
                 break;
             }
-            // Nivel 2: Fuzzy Matching
             for (auto& fTok : fileTokens) {
                 if (std::abs(fTok.length() - tok.length()) <= 2) {
                     int dist = levenshteinDistance(fTok, tok);
@@ -544,15 +522,12 @@ void ExtasisRhythmProcessor::loadSmartSampleForChannel(int i, int kit) {
     }
 
     if (!matchedVars.isEmpty()) {
-        // Tier 1: Exact Match
         int rIdx = juce::Random::getSystemRandom().nextInt(matchedVars.size());
         loadSampleForChannel(i, kit, matchedVars[rIdx]);
     } else if (!fuzzyMatchedVars.isEmpty()) {
-        // Tier 2: Fuzzy Match
         int rIdx = juce::Random::getSystemRandom().nextInt(fuzzyMatchedVars.size());
         loadSampleForChannel(i, kit, fuzzyMatchedVars[rIdx]);
     } else {
-        // Tier 3: DSP Auto-Tagging
         bool dspFound = false;
         int maxAttempts = juce::jmin(20, allVariants.size());
         juce::Array<int> checkedIndices;
@@ -573,7 +548,6 @@ void ExtasisRhythmProcessor::loadSmartSampleForChannel(int i, int kit) {
         }
         
         if (!dspFound) {
-            // FALLBACK
             int rIdx = juce::Random::getSystemRandom().nextInt(allVariants.size());
             loadSampleForChannel(i, kit, allVariants[rIdx]);
         }
@@ -592,7 +566,6 @@ void ExtasisRhythmProcessor::randomizeKit() {
     snareTokens.addTokens("sd sn snare tarola caja rim snar s snaredrum drum_snr", " ", "");
 
     for (int i = 0; i < 12; ++i) {
-        // Try up to 10 random folders to find a matching sample
         for (int attempts = 0; attempts < 10; ++attempts) {
             int randomFolderIdx = juce::Random::getSystemRandom().nextInt(drumFolders.size());
             juce::StringArray variants = getVariantsForChannel(randomFolderIdx, i);
@@ -612,7 +585,7 @@ void ExtasisRhythmProcessor::randomizeKit() {
                 if (!matchKicks.isEmpty()) {
                     int rIdx = juce::Random::getSystemRandom().nextInt(matchKicks.size());
                     chosenSample = matchKicks[rIdx];
-                } else if (attempts == 9) { // Fallback on last attempt
+                } else if (attempts == 9) { 
                     int rIdx = juce::Random::getSystemRandom().nextInt(variants.size());
                     chosenSample = variants[rIdx];
                 }
@@ -628,7 +601,7 @@ void ExtasisRhythmProcessor::randomizeKit() {
                 if (!matchSnares.isEmpty()) {
                     int rIdx = juce::Random::getSystemRandom().nextInt(matchSnares.size());
                     chosenSample = matchSnares[rIdx];
-                } else if (attempts == 9) { // Fallback on last attempt
+                } else if (attempts == 9) { 
                     int rIdx = juce::Random::getSystemRandom().nextInt(variants.size());
                     chosenSample = variants[rIdx];
                 }
@@ -640,13 +613,12 @@ void ExtasisRhythmProcessor::randomizeKit() {
             if (chosenSample.isNotEmpty()) {
                 loadSampleForChannel(i, randomFolderIdx, chosenSample);
                 
-                // Update APVTS so GUI dropdown 1 updates automatically!
                 if (auto* param = apvts.getParameter("sampleSource_" + juce::String(i))) {
                     param->beginChangeGesture();
                     param->setValueNotifyingHost(param->convertTo0to1((float)randomFolderIdx));
                     param->endChangeGesture();
                 }
-                break; // Move to next channel
+                break; 
             }
         }
     }
@@ -665,16 +637,13 @@ void ExtasisRhythmProcessor::triggerChannel(int ch, float vel) {
 }
 
 void ExtasisRhythmProcessor::killAllAudio() {
-    
-    if (true) {
-        for (int i = 0; i < 12; ++i) {
-            samplePositions[i] = -1.0;
-            samplePositionsOld[i] = -1.0;
-            fadeOld[i] = 0.0f;
-            channelSteps[i] = 0;
-            flashCounters[i] = 0;
-            channelStepSemitones[i] = 0.0f;
-        }
+    for (int i = 0; i < 12; ++i) {
+        samplePositions[i] = -1.0;
+        samplePositionsOld[i] = -1.0;
+        fadeOld[i] = 0.0f;
+        channelSteps[i] = 0;
+        flashCounters[i] = 0;
+        channelStepSemitones[i] = 0.0f;
     }
     internalElapsedBeats = 0.0;
     outputLevelL = 0.0f;
@@ -738,7 +707,6 @@ void ExtasisRhythmProcessor::resetSequencer() {
 void ExtasisRhythmProcessor::changePattern (int newPattern) {
     if (!isInitialized || newPattern < 0 || newPattern > 7) return;
 
-    // 1. Save active pattern values from APVTS if switching patterns
     if (newPattern != currentPattern) {
         for (int i = 0; i < 12; ++i) {
             for (int s = 0; s < 32; ++s) {
@@ -753,7 +721,6 @@ void ExtasisRhythmProcessor::changePattern (int newPattern) {
         currentPattern = newPattern;
     }
 
-    // 2. Load target pattern values into APVTS parameters
     for (int i = 0; i < 12; ++i) {
         for (int s = 0; s < 32; ++s) {
             if (auto* p = apvts.getParameter ("step_" + juce::String(i) + "_" + juce::String(s))) {
@@ -775,7 +742,6 @@ void ExtasisRhythmProcessor::changePattern (int newPattern) {
 void ExtasisRhythmProcessor::copyToNextPattern() {
     if (!isInitialized) return;
 
-    // 1. Ensure current pattern steps are saved from APVTS
     for (int i = 0; i < 12; ++i) {
         for (int s = 0; s < 32; ++s) {
             if (auto* param = cachedParams.stepParams[i][s])
@@ -789,7 +755,6 @@ void ExtasisRhythmProcessor::copyToNextPattern() {
 
     int nextPattern = (currentPattern + 1) % 8;
 
-    // 2. Deep copy current pattern data to next pattern
     for (int i = 0; i < 12; ++i) {
         for (int s = 0; s < 32; ++s) {
             savedPatterns[nextPattern][i][s] = savedPatterns[currentPattern][i][s];
@@ -801,7 +766,6 @@ void ExtasisRhythmProcessor::copyToNextPattern() {
         savedFills[nextPattern][s] = savedFills[currentPattern][s];
     }
 
-    // 3. Switch to next pattern
     changePattern (nextPattern);
 }
 
@@ -821,7 +785,6 @@ void ExtasisRhythmProcessor::getStateInformation (juce::MemoryBlock& destData) {
     auto state = apvts.copyState();
     std::unique_ptr<juce::XmlElement> xml (state.createXml());
     
-    // Save Sequencer Patterns, Glides, Note Locks, and Playback Modes
     auto patternsXml = new juce::XmlElement("PATTERNS");
     patternsXml->setAttribute("CURRENT_PATTERN", currentPattern);
     for (int p = 0; p < 8; ++p) {
@@ -846,7 +809,6 @@ void ExtasisRhythmProcessor::getStateInformation (juce::MemoryBlock& destData) {
     patternsXml->setAttribute("FILL_SEQ_MODE", fillSeqMode.load());
     xml->addChildElement(patternsXml);
 
-    // Save Exact Sample Kit and Sample Variant for each channel
     auto samplesXml = new juce::XmlElement("SAMPLES");
     for (int i = 0; i < 12; ++i) {
         int chKit = (int)cachedParams.sampleSource[i]->load();
@@ -899,14 +861,13 @@ void ExtasisRhythmProcessor::setStateInformation (const void* data, int sizeInBy
         if (auto* samplesXml = xmlState->getChildByName("SAMPLES")) {
             for (int i = 0; i < 12; ++i) {
                 juce::String sName = samplesXml->getStringAttribute("CH" + juce::String(i) + "_SAMPLE");
-                if (sName.isEmpty()) sName = samplesXml->getStringAttribute("CH" + juce::String(i)); // backward compatibility
+                if (sName.isEmpty()) sName = samplesXml->getStringAttribute("CH" + juce::String(i)); 
 
                 int kitIdx = samplesXml->getIntAttribute("CH" + juce::String(i) + "_KIT_IDX", -1);
                 if (kitIdx < 0) {
                     kitIdx = (int)cachedParams.sampleSource[i]->load();
                 }
                 
-                // Match by kit folder name if available
                 if (samplesXml->hasAttribute("CH" + juce::String(i) + "_KIT_NAME")) {
                     juce::String kitName = samplesXml->getStringAttribute("CH" + juce::String(i) + "_KIT_NAME");
                     for (int k = 0; k < drumFolders.size(); ++k) {
@@ -925,7 +886,6 @@ void ExtasisRhythmProcessor::setStateInformation (const void* data, int sizeInBy
             }
         }
 
-        // Apply current pattern parameters
         for (int i = 0; i < 12; ++i) {
             for (int s = 0; s < 32; ++s) {
                 if (auto* p = apvts.getParameter ("step_" + juce::String(i) + "_" + juce::String(s))) {
@@ -985,7 +945,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
     if (!isLicensedCached.load()) {
         int64_t currentElapsed = demoSamplesElapsed.load();
-        int64_t maxDemoSamples = (int64_t)(getSampleRate() * 600.0); // 10 minutes (600s)
+        int64_t maxDemoSamples = (int64_t)(getSampleRate() * 600.0); 
         if (currentElapsed >= maxDemoSamples) {
             demoExpired.store (true);
             return;
@@ -994,7 +954,6 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         }
     }
     
-    // Multi-Out Audio: Cache stem output bus buffers (Buses 1 to 12)
     juce::AudioBuffer<float> stemBuses[12];
     bool stemBusEnabled[12] = { false };
     int totalOutputBuses = getBusCount (false);
@@ -1108,7 +1067,6 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         panSmoother[i].setTargetValue(cachedParams.chanPan[i]->load());
         pitchSmoother[i].setTargetValue(cachedParams.chanPitch[i]->load() + channelStepSemitones[i].load());
         
-        // We still keep the arrays for anything that isn't per-sample, but we will overwrite them in the sample loop
         double srRatio = localSamples[i]->sampleRate / getSampleRate();
 
         chanSSend[i] = cachedParams.chanSSend[i]->load(); chanDSend[i] = cachedParams.chanDSend[i]->load();
@@ -1138,8 +1096,6 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         fillSeqPos = 0;
     }
 
-    
-
     auto getSampleHermite = [&](int chIdx, double pos, int length, int audioChan) -> float {
         int idx1 = (int)pos; float frac = (float)(pos - (double)idx1);
         int idx0 = juce::jmax(0, idx1 - 1); int idx2 = juce::jmin(length - 1, idx1 + 1); int idx3 = juce::jmin(length - 1, idx1 + 2);
@@ -1164,6 +1120,9 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         double exactBeats = hasHostTime ? (ppqPosition + ((double)s * beatIncPerSample)) : internalElapsedBeats;
 
         if (playing) {
+            bool anyChannelFiredThisSample = false;
+            uint64_t nextEventID = globalEventCounter.load() + 1;
+
             for (int ch = 0; ch < 12; ++ch) {
                 int maxLen = (int) (cachedParams.lengthParams[ch] != nullptr ? cachedParams.lengthParams[ch]->load() : 16.0f);
                 int numSteps = chanFit[ch] ? juce::jlimit(1, 32, maxLen > 0 ? maxLen : 16) : (chanTriplet[ch] ? juce::jlimit(1, 24, maxLen > 0 ? maxLen : 12) : juce::jlimit(1, 32, maxLen > 0 ? maxLen : 16));
@@ -1205,13 +1164,14 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                     if (stepV > 0) {
                         float stepVel = (stepV == 1 ? 0.4f : (stepV == 2 ? 0.7f : 1.0f));
                         triggerChannel (ch, stepVel);
-                        lastFiredBeat[ch] = exactBeats;
+                        
+                        channelLastEvent[ch] = nextEventID;
                         lastFiredSemitone[ch] = channelStepSemitones[ch].load();
+                        anyChannelFiredThisSample = true;
 
-                        // 12-Channel MIDI Output
                         int baseNote = getMidiNoteForChannel (ch);
                         int targetNote = juce::jlimit (0, 127, baseNote + (int)channelStepSemitones[ch].load());
-                        int midiChan = ch + 1; // MIDI channel 1 to 12
+                        int midiChan = ch + 1;
 
                         if (activeMidiNotes[ch] >= 0) {
                             midi.addEvent (juce::MidiMessage::noteOff (midiChan, activeMidiNotes[ch]), s);
@@ -1225,6 +1185,10 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                         }
                     }
                 }
+            } 
+
+            if (anyChannelFiredThisSample) {
+                globalEventCounter.store(nextEventID);
             }
 
             bool fillTriplet = (cachedParams.tripletFill != nullptr && cachedParams.tripletFill->load() > 0.5f);
@@ -1262,26 +1226,17 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
                 auto* fillParam = cachedParams.fillStepParams[mappedFillStep];
                 int fillV = (fillParam != nullptr) ? (int)(fillParam->load() + 0.5f) : 0;
+                
                 if (fillV > 0) {
-                    // 1. Buscar el instante más reciente en el que algún canal haya sonado
-                    double maxBeat = -1.0;
-                    for (int i = 0; i < 12; ++i) {
-                        if (lastFiredBeat[i].load() > maxBeat) {
-                            maxBeat = lastFiredBeat[i].load();
-                        }
-                    }
-
-                    // 2. Repetir todos los instrumentos que compartan ese último instante
-                    for (int ch = 0; ch < 12; ++ch) {
-                        if (sampleBuffers[ch] != nullptr) {
-                            // Tolerancia para absorber desajustes por polirritmos (0.02 beats)
-                            if (maxBeat >= 0.0 && std::abs(lastFiredBeat[ch].load() - maxBeat) < 0.02) {
-                                
+                    uint64_t lastID = globalEventCounter.load();
+                    
+                    if (lastID > 0) {
+                        for (int ch = 0; ch < 12; ++ch) {
+                            if (sampleBuffers[ch] != nullptr && channelLastEvent[ch].load() == lastID) {
                                 channelStepSemitones[ch] = lastFiredSemitone[ch].load();
                                 float fillVel = (fillV == 1) ? 0.4f : (fillV == 2 ? 0.7f : 1.0f);
                                 triggerChannel(ch, fillVel);
 
-                                // Salida MIDI de la repetición
                                 int targetNote = juce::jlimit(0, 127, getMidiNoteForChannel(ch) + (int)channelStepSemitones[ch].load());
                                 if (activeMidiNotes[ch] >= 0) {
                                     midi.addEvent(juce::MidiMessage::noteOff(ch + 1, activeMidiNotes[ch]), s);
@@ -1361,7 +1316,6 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                 float pannedR = chOutR * std::sqrt (0.5f * (1.0f + chanPan[i])) * finalGain;
                 pannedL = fastTanh (pannedL * 1.5f); pannedR = fastTanh (pannedR * 1.5f);
 
-                // Multi-Out Stem bus routing (Bypasses Master FX when routed separately in DAW)
                 if (stemBusEnabled[i]) {
                     int numStemChans = stemBuses[i].getNumChannels();
                     if (numStemChans >= 2) {
@@ -1570,7 +1524,6 @@ void ExtasisRhythmProcessor::loadTagsFromJson() {
 
     juce::File tagsFile = sampleDir.getChildFile("tags.json");
     if (!tagsFile.existsAsFile()) {
-        // Create default JSON
         juce::DynamicObject::Ptr root = new juce::DynamicObject();
         root->setProperty("0_Kick", "bd kik kick kck bombo sub bassdrum bassd kickdrum drum_kik");
         root->setProperty("1_Snare", "sd sn snare tarola caja rim snar s snaredrum drum_snr");
@@ -1598,7 +1551,6 @@ void ExtasisRhythmProcessor::loadTagsFromJson() {
             channelTags[i].addTokens(tokens, " ,", "");
         }
     } else {
-        // Fallback if parsing fails
         channelTags[0].addTokens("bd kik kick kck bombo sub bassdrum bassd kickdrum drum_kik", " ", "");
         channelTags[1].addTokens("sd sn snare tarola caja rim snar s snaredrum drum_snr", " ", "");
         channelTags[2].addTokens("ch hh closed hat hihat clh hat_c hh_c cht closedhat closed_hh", " ", "");
@@ -1640,7 +1592,7 @@ int ExtasisRhythmProcessor::analyzeAudioFile(const juce::File& file) {
     std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(file));
     if (!reader) return -1;
     
-    int numSamples = juce::jmin((int)reader->lengthInSamples, 8192); // Leer primeros ~185ms
+    int numSamples = juce::jmin((int)reader->lengthInSamples, 8192); 
     if (numSamples < 100) return -1;
 
     juce::AudioBuffer<float> buffer(1, numSamples);
@@ -1659,18 +1611,12 @@ int ExtasisRhythmProcessor::analyzeAudioFile(const juce::File& file) {
         }
     }
     
-    float zcrRate = (float)zeroCrossings / (float)numSamples; // 0.0 a 1.0
-    float rms = std::sqrt(energy / numSamples);
+    float zcrRate = (float)zeroCrossings / (float)numSamples; 
     
-    // Heurísticas súper simples:
-    // ZCR bajo (< 0.05) y mucha energía -> Bombo (0)
-    // ZCR muy alto (> 0.20) -> Hihats/Cymbals (2, 3, 10, 11)
-    // ZCR medio (0.05 - 0.20) -> Snares/Claps/Percs
-    if (zcrRate < 0.04f && peak > 0.4f) return 0; // Kick
-    if (zcrRate > 0.25f) return 2; // Hat
-    if (zcrRate > 0.10f && zcrRate <= 0.25f && peak > 0.5f) return 1; // Snare
-    if (zcrRate >= 0.04f && zcrRate <= 0.10f) return 7; // Mid Perc / Tom
+    if (zcrRate < 0.04f && peak > 0.4f) return 0; 
+    if (zcrRate > 0.25f) return 2; 
+    if (zcrRate > 0.10f && zcrRate <= 0.25f && peak > 0.5f) return 1; 
+    if (zcrRate >= 0.04f && zcrRate <= 0.10f) return 7; 
     
-    return -1; // Desconocido
+    return -1; 
 }
-

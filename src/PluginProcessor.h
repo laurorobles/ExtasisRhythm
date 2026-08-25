@@ -1,4 +1,3 @@
-#include "SampleBuffer.h"
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -6,6 +5,8 @@
 #include <juce_dsp/juce_dsp.h>
 #include <atomic>
 #include <vector>
+#include <cstdint>
+#include "SampleBuffer.h"
 
 class ExtasisRhythmProcessor  : public juce::AudioProcessor
 {
@@ -98,8 +99,6 @@ public:
     std::atomic<double> samplePositionsOld[12];
     std::atomic<float>  fadeOld[12];
 
-
-
     std::atomic<int> seqModes[12];
     std::atomic<int> seqPingDir[12]; 
     int seqPingPos[12] = {};         
@@ -111,7 +110,9 @@ public:
     int savedNotes[8][12][32]; 
     std::atomic<float> channelStepSemitones[12];
 
-    std::atomic<double> lastFiredBeat[12];
+    // Memoria del Fill por Tickets (Event IDs)
+    std::atomic<uint64_t> globalEventCounter { 0 };
+    std::atomic<uint64_t> channelLastEvent[12];
     std::atomic<float> lastFiredSemitone[12];
 
 private:
@@ -140,10 +141,6 @@ private:
     juce::LinearSmoothedValue<float> panSmoother[12];
     juce::LinearSmoothedValue<float> pitchSmoother[12];
     juce::LinearSmoothedValue<float> cutSmoother[12];
-
-
-     
-    
      
     SampleBuffer::Ptr sampleBuffers[12];
     juce::SpinLock pointerLock;
@@ -174,7 +171,6 @@ private:
     float delayLfoPhase = 0.0f;
     float smoothedDelayTime = 0.0f;
 
-    // Fast DSP Saturator (Padé Rational Approximation ~5x faster than std::tanh)
     static inline float fastTanh (float x) noexcept
     {
         if (x > 3.0f)  return 1.0f;
@@ -183,7 +179,6 @@ private:
         return x * (27.0f + x2) / (27.0f + 9.0f * x2);
     }
 
-    // Cached raw parameter pointers to eliminate map lookups in realtime processBlock
     struct CachedParameters {
         std::atomic<float>* stepParams[12][32] = {};
         std::atomic<float>* lengthParams[12] = {};
