@@ -68,7 +68,6 @@ public:
     void changePattern (int newPattern);
     void copyToNextPattern();
     int getCurrentPattern() const { return currentPattern; }
-
     void saveCustomPreset (const juce::File& file);
     void loadCustomPreset (const juce::File& file);
 
@@ -110,10 +109,9 @@ public:
     int savedNotes[8][12][32]; 
     std::atomic<float> channelStepSemitones[12];
 
-    // Memoria del Fill por Tickets (Event IDs)
-    std::atomic<uint64_t> globalEventCounter { 0 };
-    std::atomic<uint64_t> channelLastEvent[12];
-    std::atomic<float> lastFiredSemitone[12];
+    // Memoria del Fill (Ratchet / Sub-pasos)
+    std::atomic<int64_t> lastRatchetTick[12];
+    std::atomic<int> currentMappedStep[12];
 
 private:
     uint64_t samplesProcessed = 0;

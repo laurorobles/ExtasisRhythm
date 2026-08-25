@@ -115,7 +115,6 @@ ExtasisRhythmProcessor::ExtasisRhythmProcessor()
         for (int s=0; s<16; ++s) savedFills[p][s] = 0;
     }
 
-    globalEventCounter.store(0);
     for (int i=0; i<12; ++i) { 
         samplePositions[i] = -1.0; 
         samplePositionsOld[i] = -1.0;
@@ -123,8 +122,10 @@ ExtasisRhythmProcessor::ExtasisRhythmProcessor()
         channelVelocities[i] = 1.0f; 
         channelSteps[i] = 0;
         channelStepSemitones[i] = 0.0f;
-        channelLastEvent[i] = 0;
-        lastFiredSemitone[i] = 0.0f;
+        
+        lastRatchetTick[i] = -1;
+        currentMappedStep[i] = 0;
+
         currentSampleName.add("");
         lastSubStep[i] = -1;
         seqModes[i] = 0;
@@ -172,7 +173,6 @@ void ExtasisRhythmProcessor::scanSampleFolders()
 {
     drumFolders.clear();
 
-    // 1. Check persistent custom folder
     auto cfg = getConfigFile();
     if (cfg.existsAsFile())
     {
@@ -188,7 +188,6 @@ void ExtasisRhythmProcessor::scanSampleFolders()
         }
     }
 
-    // 2. Default search in Documents if not custom
     if (!samplesFolder.isDirectory())
     {
         auto docs = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory);
@@ -367,7 +366,6 @@ juce::String ExtasisRhythmProcessor::getMidiNoteNameForChannel (int ch)
 void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
     currentSamplesPerBlock = bs;
     lastHostStep = -1; internalElapsedBeats = 0.0; lastFillSubStep = -1;
-    globalEventCounter.store(0);
     
     updateLicenseStatus();
     demoSamplesElapsed.store (0);
@@ -376,8 +374,8 @@ void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
         lastSubStep[i] = -1; 
         fadeOld[i] = 0.0f; 
         channelStepSemitones[i] = 0.0f; 
-        channelLastEvent[i] = 0;
-        lastFiredSemitone[i] = 0.0f;
+        lastRatchetTick[i] = -1;
+        currentMappedStep[i] = 0;
 
         volSmoother[i].reset(sr, 0.01);
         panSmoother[i].reset(sr, 0.01);
@@ -644,6 +642,7 @@ void ExtasisRhythmProcessor::killAllAudio() {
         channelSteps[i] = 0;
         flashCounters[i] = 0;
         channelStepSemitones[i] = 0.0f;
+        lastRatchetTick[i] = -1;
     }
     internalElapsedBeats = 0.0;
     outputLevelL = 0.0f;
@@ -1120,77 +1119,6 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         double exactBeats = hasHostTime ? (ppqPosition + ((double)s * beatIncPerSample)) : internalElapsedBeats;
 
         if (playing) {
-            bool anyChannelFiredThisSample = false;
-            uint64_t nextEventID = globalEventCounter.load() + 1;
-
-            for (int ch = 0; ch < 12; ++ch) {
-                int maxLen = (int) (cachedParams.lengthParams[ch] != nullptr ? cachedParams.lengthParams[ch]->load() : 16.0f);
-                int numSteps = chanFit[ch] ? juce::jlimit(1, 32, maxLen > 0 ? maxLen : 16) : (chanTriplet[ch] ? juce::jlimit(1, 24, maxLen > 0 ? maxLen : 12) : juce::jlimit(1, 32, maxLen > 0 ? maxLen : 16));
-
-                double mult = chanFit[ch] ? ((double)numSteps / 4.0) : (chanTriplet[ch] ? 3.0 : 4.0);
-                double chSubStepD = exactBeats * mult;
-                int chSubStep = (int)chSubStepD;
-
-                if (chSubStep != lastSubStep[ch]) {
-                    lastSubStep[ch] = chSubStep;
-
-                    int mappedStep = 0;
-                    int mode = seqModes[ch].load();
-                    if (numSteps <= 1) {
-                        mappedStep = 0;
-                    } else if (mode == 1) { 
-                        mappedStep = (numSteps - 1) - (chSubStep % numSteps);
-                        if (mappedStep < 0) mappedStep += numSteps;
-                    } else if (mode == 2) { 
-                        mappedStep = random.nextInt (numSteps);
-                    } else if (mode == 3) { 
-                        int cycleLen = (numSteps - 1) * 2;
-                        if (cycleLen > 0) {
-                            int phase = chSubStep % cycleLen;
-                            if (phase < 0) phase += cycleLen;
-                            mappedStep = (phase < numSteps) ? phase : cycleLen - phase;
-                        } else mappedStep = 0;
-                    } else { 
-                        mappedStep = chSubStep % numSteps;
-                        if (mappedStep < 0) mappedStep += numSteps;
-                    }
-                    channelSteps[ch] = mappedStep;
-
-                    int pat = getCurrentPattern();
-                    channelStepSemitones[ch] = (float)savedNotes[pat][ch][mappedStep];
-
-                    auto* stepParam = cachedParams.stepParams[ch][mappedStep];
-                    int stepV = (stepParam != nullptr) ? (int)(stepParam->load() + 0.5f) : 0;
-                    if (stepV > 0) {
-                        float stepVel = (stepV == 1 ? 0.4f : (stepV == 2 ? 0.7f : 1.0f));
-                        triggerChannel (ch, stepVel);
-                        
-                        channelLastEvent[ch] = nextEventID;
-                        lastFiredSemitone[ch] = channelStepSemitones[ch].load();
-                        anyChannelFiredThisSample = true;
-
-                        int baseNote = getMidiNoteForChannel (ch);
-                        int targetNote = juce::jlimit (0, 127, baseNote + (int)channelStepSemitones[ch].load());
-                        int midiChan = ch + 1;
-
-                        if (activeMidiNotes[ch] >= 0) {
-                            midi.addEvent (juce::MidiMessage::noteOff (midiChan, activeMidiNotes[ch]), s);
-                        }
-                        midi.addEvent (juce::MidiMessage::noteOn (midiChan, targetNote, stepVel), s);
-                        activeMidiNotes[ch] = targetNote;
-                    } else {
-                        if (activeMidiNotes[ch] >= 0) {
-                            midi.addEvent (juce::MidiMessage::noteOff (ch + 1, activeMidiNotes[ch]), s);
-                            activeMidiNotes[ch] = -1;
-                        }
-                    }
-                }
-            } 
-
-            if (anyChannelFiredThisSample) {
-                globalEventCounter.store(nextEventID);
-            }
-
             bool fillTriplet = (cachedParams.tripletFill != nullptr && cachedParams.tripletFill->load() > 0.5f);
             bool fillFit = (cachedParams.fillFit != nullptr && cachedParams.fillFit->load() > 0.5f);
             int numFillSteps = juce::jlimit(1, 16, (int)(cachedParams.fillLength != nullptr ? cachedParams.fillLength->load() : 16.0f));
@@ -1204,50 +1132,96 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                 int mappedFillStep = 0;
                 int fMode = fillSeqMode.load();
 
-                if (numFillSteps <= 1) {
-                    mappedFillStep = 0;
-                } else if (fMode == 1) { 
-                    mappedFillStep = (numFillSteps - 1) - (fillSubStep % numFillSteps);
-                    if (mappedFillStep < 0) mappedFillStep += numFillSteps;
-                } else if (fMode == 2) { 
-                    mappedFillStep = random.nextInt(numFillSteps);
-                } else if (fMode == 3) { 
+                if (numFillSteps <= 1) mappedFillStep = 0;
+                else if (fMode == 1) mappedFillStep = (numFillSteps - 1) - (fillSubStep % numFillSteps);
+                else if (fMode == 2) mappedFillStep = random.nextInt(numFillSteps);
+                else if (fMode == 3) { 
                     int cycleLen = (numFillSteps - 1) * 2;
                     if (cycleLen > 0) {
                         int phase = fillSubStep % cycleLen;
-                        if (phase < 0) phase += cycleLen;
                         mappedFillStep = (phase < numFillSteps) ? phase : cycleLen - phase;
                     } else mappedFillStep = 0;
-                } else { 
-                    mappedFillStep = fillSubStep % numFillSteps;
-                    if (mappedFillStep < 0) mappedFillStep += numFillSteps;
-                }
-                fillSeqPos = mappedFillStep;
-
-                auto* fillParam = cachedParams.fillStepParams[mappedFillStep];
-                int fillV = (fillParam != nullptr) ? (int)(fillParam->load() + 0.5f) : 0;
+                } else mappedFillStep = fillSubStep % numFillSteps;
                 
-                if (fillV > 0) {
-                    uint64_t lastID = globalEventCounter.load();
-                    
-                    if (lastID > 0) {
-                        for (int ch = 0; ch < 12; ++ch) {
-                            if (sampleBuffers[ch] != nullptr && channelLastEvent[ch].load() == lastID) {
-                                channelStepSemitones[ch] = lastFiredSemitone[ch].load();
-                                float fillVel = (fillV == 1) ? 0.4f : (fillV == 2 ? 0.7f : 1.0f);
-                                triggerChannel(ch, fillVel);
+                if (mappedFillStep < 0) mappedFillStep += numFillSteps;
+                fillSeqPos = mappedFillStep;
+            }
 
-                                int targetNote = juce::jlimit(0, 127, getMidiNoteForChannel(ch) + (int)channelStepSemitones[ch].load());
-                                if (activeMidiNotes[ch] >= 0) {
-                                    midi.addEvent(juce::MidiMessage::noteOff(ch + 1, activeMidiNotes[ch]), s);
-                                }
-                                midi.addEvent(juce::MidiMessage::noteOn(ch + 1, targetNote, fillVel), s);
-                                activeMidiNotes[ch] = targetNote;
-                            }
-                        }
+            auto* fillParam = cachedParams.fillStepParams[fillSeqPos];
+            int currentFillV = (fillParam != nullptr) ? (int)(fillParam->load() + 0.5f) : 0;
+            
+            int ratchets = (currentFillV == 1) ? 2 : ((currentFillV == 2) ? 3 : 1);
+
+            for (int ch = 0; ch < 12; ++ch) {
+                int maxLen = (int) (cachedParams.lengthParams[ch] != nullptr ? cachedParams.lengthParams[ch]->load() : 16.0f);
+                int numSteps = chanFit[ch] ? juce::jlimit(1, 32, maxLen > 0 ? maxLen : 16) : (chanTriplet[ch] ? juce::jlimit(1, 24, maxLen > 0 ? maxLen : 12) : juce::jlimit(1, 32, maxLen > 0 ? maxLen : 16));
+
+                double mult = chanFit[ch] ? ((double)numSteps / 4.0) : (chanTriplet[ch] ? 3.0 : 4.0);
+                double chSubStepD = exactBeats * mult;
+                int chSubStep = (int)chSubStepD;
+                double stepFraction = chSubStepD - (double)chSubStep;
+
+                if (chSubStep != lastSubStep[ch]) {
+                    lastSubStep[ch] = chSubStep;
+
+                    int mappedStep = 0;
+                    int mode = seqModes[ch].load();
+                    if (numSteps <= 1) mappedStep = 0;
+                    else if (mode == 1) mappedStep = (numSteps - 1) - (chSubStep % numSteps);
+                    else if (mode == 2) mappedStep = random.nextInt (numSteps);
+                    else if (mode == 3) { 
+                        int cycleLen = (numSteps - 1) * 2;
+                        if (cycleLen > 0) {
+                            int phase = chSubStep % cycleLen;
+                            mappedStep = (phase < numSteps) ? phase : cycleLen - phase;
+                        } else mappedStep = 0;
+                    } else mappedStep = chSubStep % numSteps;
+                    
+                    if (mappedStep < 0) mappedStep += numSteps;
+                    
+                    currentMappedStep[ch] = mappedStep;
+                    channelSteps[ch] = mappedStep;
+
+                    int pat = getCurrentPattern();
+                    channelStepSemitones[ch] = (float)savedNotes[pat][ch][mappedStep];
+
+                    if (activeMidiNotes[ch] >= 0) {
+                        midi.addEvent (juce::MidiMessage::noteOff (ch + 1, activeMidiNotes[ch]), s);
+                        activeMidiNotes[ch] = -1;
                     }
                 }
-            }
+
+                int mappedStep = currentMappedStep[ch].load();
+                auto* stepParam = cachedParams.stepParams[ch][mappedStep];
+                int stepV = (stepParam != nullptr) ? (int)(stepParam->load() + 0.5f) : 0;
+
+                if (stepV > 0) {
+                    int currentRatchetIdx = (int)(stepFraction * ratchets);
+                    if (currentRatchetIdx >= ratchets) currentRatchetIdx = ratchets - 1; 
+
+                    int64_t absoluteRatchetTick = (int64_t)chSubStep * 12 + (currentRatchetIdx * 12 / ratchets);
+
+                    if (absoluteRatchetTick != lastRatchetTick[ch].load()) {
+                        lastRatchetTick[ch] = absoluteRatchetTick;
+                        
+                        float stepVel = (stepV == 1 ? 0.4f : (stepV == 2 ? 0.7f : 1.0f));
+                        
+                        if (ratchets > 1 && currentRatchetIdx > 0) stepVel *= 0.82f;
+
+                        triggerChannel (ch, stepVel);
+
+                        int baseNote = getMidiNoteForChannel (ch);
+                        int targetNote = juce::jlimit (0, 127, baseNote + (int)channelStepSemitones[ch].load());
+                        int midiChan = ch + 1; 
+
+                        if (activeMidiNotes[ch] >= 0) {
+                            midi.addEvent (juce::MidiMessage::noteOff (midiChan, activeMidiNotes[ch]), s);
+                        }
+                        midi.addEvent (juce::MidiMessage::noteOn (midiChan, targetNote, stepVel), s);
+                        activeMidiNotes[ch] = targetNote;
+                    }
+                }
+            } 
         }
 
         float kickL = 0.0f, kickR = 0.0f;
