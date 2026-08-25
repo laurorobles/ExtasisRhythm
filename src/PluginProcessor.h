@@ -1,3 +1,4 @@
+#include "SampleBuffer.h"
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -76,6 +77,10 @@ public:
     std::atomic<float> channelVelocities[12];
     std::atomic<int> flashCounters[12];
     juce::StringArray currentSampleName;
+    juce::StringArray channelTags[12];
+    void loadTagsFromJson();
+    int levenshteinDistance(const juce::String& s1, const juce::String& s2) const;
+    int analyzeAudioFile(const juce::File& file);
 
     std::atomic<float> outputLevelL { 0.0f };
     std::atomic<float> outputLevelR { 0.0f };
@@ -93,8 +98,7 @@ public:
     std::atomic<double> samplePositionsOld[12];
     std::atomic<float>  fadeOld[12];
 
-    double sampleFileRates[12] = { 44100.0, 44100.0, 44100.0, 44100.0, 44100.0, 44100.0, 
-                                   44100.0, 44100.0, 44100.0, 44100.0, 44100.0, 44100.0 };
+
 
     std::atomic<int> seqModes[12];
     std::atomic<int> seqPingDir[12]; 
@@ -106,6 +110,9 @@ public:
     int savedGlides[8][12][32];
     int savedNotes[8][12][32]; 
     std::atomic<float> channelStepSemitones[12];
+
+    std::atomic<double> lastFiredBeat[12];
+    std::atomic<float> lastFiredSemitone[12];
 
 private:
     uint64_t samplesProcessed = 0;
@@ -129,10 +136,17 @@ private:
     int lastSubStep[12];
     int lastFillSubStep = -1;
 
-    juce::AudioBuffer<float> sampleBuffers[12];
-    int sampleLengths[12] = {0};
-    juce::CriticalSection sampleLock;
+    juce::LinearSmoothedValue<float> volSmoother[12];
+    juce::LinearSmoothedValue<float> panSmoother[12];
+    juce::LinearSmoothedValue<float> pitchSmoother[12];
+    juce::LinearSmoothedValue<float> cutSmoother[12];
 
+
+     
+    
+     
+    SampleBuffer::Ptr sampleBuffers[12];
+    juce::SpinLock pointerLock;
     juce::dsp::StateVariableTPTFilter<float> kickHpfL, kickHpfR, otherHpfL, otherHpfR;
     juce::dsp::StateVariableTPTFilter<float> kickLpfL, kickLpfR, otherLpfL, otherLpfR;
     juce::dsp::StateVariableTPTFilter<float> kickRatLpfL, kickRatLpfR, otherRatLpfL, otherRatLpfR;
@@ -169,13 +183,70 @@ private:
         return x * (27.0f + x2) / (27.0f + 9.0f * x2);
     }
 
-    // Cached raw parameter pointers to eliminate heap/string allocations in realtime processBlock
-    std::atomic<float>* cachedStepParams[12][32] = {};
-    std::atomic<float>* cachedLengthParams[12] = {};
-    std::atomic<float>* cachedFillStepParams[16] = {};
-    std::atomic<float>* cachedFillLengthParam = nullptr;
-    std::atomic<float>* cachedTripletFillParam = nullptr;
-    std::atomic<float>* cachedFillFitParam = nullptr;
+    // Cached raw parameter pointers to eliminate map lookups in realtime processBlock
+    struct CachedParameters {
+        std::atomic<float>* stepParams[12][32] = {};
+        std::atomic<float>* lengthParams[12] = {};
+        std::atomic<float>* fillStepParams[16] = {};
+        std::atomic<float>* fillLength = nullptr;
+        std::atomic<float>* tripletFill = nullptr;
+        std::atomic<float>* fillFit = nullptr;
+        
+        std::atomic<float>* isPlaying = nullptr;
+        std::atomic<float>* bpm = nullptr;
+        std::atomic<float>* globalKitChoice = nullptr;
+        
+        std::atomic<float>* masterHpf = nullptr;
+        std::atomic<float>* masterHpfRes = nullptr;
+        std::atomic<float>* masterLpf = nullptr;
+        std::atomic<float>* masterLpfRes = nullptr;
+        std::atomic<float>* pcmBits = nullptr;
+        std::atomic<float>* pcmRate = nullptr;
+        std::atomic<float>* masterAnalog = nullptr;
+        std::atomic<float>* masterVinyl = nullptr;
+        std::atomic<float>* pumpOn = nullptr;
+        std::atomic<float>* masterAnti = nullptr;
+        std::atomic<float>* masterLimiter = nullptr;
+        std::atomic<float>* flangerOn = nullptr;
+        std::atomic<float>* flangerRate = nullptr;
+        std::atomic<float>* flangerFeedback = nullptr;
+        std::atomic<float>* chorusOn = nullptr;
+        std::atomic<float>* chorusRate = nullptr;
+        std::atomic<float>* chorusDepth = nullptr;
+        std::atomic<float>* envFilterCut = nullptr;
+        std::atomic<float>* envFilterRes = nullptr;
+        std::atomic<float>* pumpThr = nullptr;
+        std::atomic<float>* pumpAmt = nullptr;
+        std::atomic<float>* transientAttack = nullptr;
+        std::atomic<float>* transientSustain = nullptr;
+        std::atomic<float>* driveDist = nullptr;
+        std::atomic<float>* driveFilter = nullptr;
+        std::atomic<float>* driveVol = nullptr;
+        std::atomic<float>* springDecay = nullptr;
+        std::atomic<float>* springTone = nullptr;
+        std::atomic<float>* delayTime = nullptr;
+        std::atomic<float>* delaySync = nullptr;
+        std::atomic<float>* delayFb = nullptr;
+        std::atomic<float>* delayModRate = nullptr;
+        std::atomic<float>* delayModDepth = nullptr;
+        std::atomic<float>* masterVolume = nullptr;
+        std::atomic<float>* masterClipper = nullptr;
+        
+        std::atomic<float>* chanGain[12] = {};
+        std::atomic<float>* chanPan[12] = {};
+        std::atomic<float>* chanPitch[12] = {};
+        std::atomic<float>* chanSSend[12] = {};
+        std::atomic<float>* chanDSend[12] = {};
+        std::atomic<float>* chanAttack[12] = {};
+        std::atomic<float>* chanDecay[12] = {};
+        std::atomic<float>* chanMute[12] = {};
+        std::atomic<float>* chanSolo[12] = {};
+        std::atomic<float>* chanEnv[12] = {};
+        std::atomic<float>* chanTriplet[12] = {};
+        std::atomic<float>* chanFit[12] = {};
+        std::atomic<float>* chanTone[12] = {};
+        std::atomic<float>* sampleSource[12] = {};
+    } cachedParams;
 
     void initializeParameterPointers();
 
