@@ -43,6 +43,7 @@ juce_generate_juce_header(ExtasisRhythm)
 
 target_sources(ExtasisRhythm PRIVATE
     src/PluginProcessor.cpp
+    src/HardwareManager.cpp
     src/PluginProcessor.h
     src/PluginEditor.cpp
     src/PluginEditor.h

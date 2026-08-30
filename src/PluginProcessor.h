@@ -7,6 +7,7 @@
 #include <vector>
 #include <cstdint>
 #include "SampleBuffer.h"
+#include "HardwareManager.h"
 
 class ExtasisRhythmProcessor  : public juce::AudioProcessor
 {
@@ -72,12 +73,7 @@ public:
     void saveCustomPreset (const juce::File& file);
     void loadCustomPreset (const juce::File& file);
 
-    // --- SISTEMA DE CACHÉ MIR (JSON) ---
-    juce::DynamicObject::Ptr analysisCacheObj;
-    juce::File cacheFile;
-    void loadAnalysisCache();
-    void saveAnalysisCache();
-    // -----------------------------------
+    
 
     juce::AudioProcessorValueTreeState apvts;
 
@@ -85,11 +81,20 @@ public:
     std::atomic<float> channelVelocities[8];
     std::atomic<int> flashCounters[8];
     juce::StringArray currentSampleName;
+        std::unique_ptr<HardwareManager> hardwareManager;
+    juce::AudioParameterFloat* getParam(const juce::String& id) { return dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(id)); }
     juce::StringArray channelTags[8];
+    juce::Array<juce::File> categorizedFiles[8]; // Stores files for each category (0=Kick, 1=Snare...)
+    std::atomic<int> currentSampleIndex[8];
+    std::atomic<int> currentCategoryIndex[8];
+    
+    void loadNextSample(int channel, int direction);
+    void changeCategory(int channel, int direction);
+    void loadSampleFromCategory(int channel);
+
     void loadTagsFromJson();
     int levenshteinDistance(const juce::String& s1, const juce::String& s2) const;
-    int analyzeAudioFile(const juce::File& file);
-
+    
     std::atomic<float> outputLevelL { 0.0f };
     std::atomic<float> outputLevelR { 0.0f };
 
