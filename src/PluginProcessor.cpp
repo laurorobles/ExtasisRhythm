@@ -63,7 +63,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ExtasisRhythmProcessor::crea
     for (int step = 0; step < 16; ++step)
         params.push_back (std::make_unique<juce::AudioParameterInt> (juce::ParameterID ("fill_step_" + juce::String(step), 1), "Fill", 0, 2, 0));
 
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         juce::String chStr = juce::String (i);
         params.push_back (std::make_unique<juce::AudioParameterInt> (juce::ParameterID ("sampleSource_" + chStr, 1), "Source", 0, 30, 0));
         params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("gain" + chStr, 1), "Gain", 0.0f, 1.0f, 0.85f));
@@ -108,7 +108,7 @@ ExtasisRhythmProcessor::ExtasisRhythmProcessor()
     
     // --- RESET TOTAL DE PATRONES AL INICIAR ---
     for (int p=0; p<8; ++p) {
-        for (int i=0; i<12; ++i) {
+        for (int i=0; i< 8; ++i) {
             for (int s=0; s<32; ++s) {
                 savedPatterns[p][i][s] = 0;
                 savedGlides[p][i][s] = 0;
@@ -118,7 +118,7 @@ ExtasisRhythmProcessor::ExtasisRhythmProcessor()
         for (int s=0; s<16; ++s) savedFills[p][s] = 0;
     }
 
-    for (int i=0; i<12; ++i) { 
+    for (int i=0; i< 8; ++i) { 
         samplePositions[i] = -1.0; 
         samplePositionsOld[i] = -1.0;
         fadeOld[i] = 0.0f;
@@ -303,7 +303,7 @@ void ExtasisRhythmProcessor::initializeParameterPointers()
     cachedParams.masterVolume = apvts.getRawParameterValue("masterVolume");
     cachedParams.masterClipper = apvts.getRawParameterValue("masterClipper");
 
-    for (int i = 0; i < 12; ++i)
+    for (int i = 0; i < 8; ++i)
     {
         juce::String ch = juce::String(i);
         cachedParams.lengthParams[i] = apvts.getRawParameterValue ("length" + ch);
@@ -386,16 +386,16 @@ int ExtasisRhythmProcessor::getChannelForMidiNote (int noteNum)
 
 int ExtasisRhythmProcessor::getMidiNoteForChannel (int ch)
 {
-    if (ch >= 0 && ch < 12) return 60 + ch;
+    if (ch >= 0 && ch < 8) return 60 + ch;
     return 60;
 }
 
 juce::String ExtasisRhythmProcessor::getMidiNoteNameForChannel (int ch)
 {
-    static const char* noteNames[12] = { "C3 (60)", "C#3 (61)", "D3 (62)", "D#3 (63)", 
+    static const char* noteNames[8] = { "C3 (60)", "C#3 (61)", "D3 (62)", "D#3 (63)", 
                                          "E3 (64)", "F3 (65)", "F#3 (66)", "G3 (67)", 
                                          "G#3 (68)", "A3 (69)", "A#3 (70)", "B3 (71)" };
-    if (ch >= 0 && ch < 12) return noteNames[ch];
+    if (ch >= 0 && ch < 8) return noteNames[ch];
     return "C3";
 }
 
@@ -411,7 +411,7 @@ void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
     pcmHoldR = 0.0f;
     pcmPhase = 0.0f;
 
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         lastSubStep[i] = -1; 
         fadeOld[i] = 0.0f; 
         channelStepSemitones[i] = 0.0f; 
@@ -443,7 +443,7 @@ void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
     delayFeedbackLpfL.setCutoffFrequency(8000.0f); delayFeedbackLpfR.setCutoffFrequency(8000.0f);
     springToneFilterL.prepare(spec); springToneFilterR.prepare(spec); springToneFilterL.setType(juce::dsp::StateVariableTPTFilterType::lowpass); springToneFilterR.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
 
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         channelToneFilters[i].prepare(spec);
         channelToneFilters[i].setType(juce::dsp::StateVariableTPTFilterType::lowpass);
         envFilterL[i].prepare(spec); envFilterL[i].setType(juce::dsp::StateVariableTPTFilterType::lowpass);
@@ -472,7 +472,7 @@ void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
 }
 
 void ExtasisRhythmProcessor::releaseResources() {
-    for (int i=0; i<12; ++i) { juce::SpinLock::ScopedLockType sl(pointerLock); sampleBuffers[i] = nullptr; }
+    for (int i=0; i< 8; ++i) { juce::SpinLock::ScopedLockType sl(pointerLock); sampleBuffers[i] = nullptr; }
 }
 
 bool ExtasisRhythmProcessor::hasEditor() const { return true; }
@@ -500,7 +500,7 @@ juce::StringArray ExtasisRhythmProcessor::getVariantsForChannel(int folderIndex,
 }
 
 void ExtasisRhythmProcessor::loadSampleForChannel(int ch, int folderIndex, const juce::String& fileName) {
-    if (ch < 0 || ch >= 12 || drumFolders.isEmpty() || folderIndex >= drumFolders.size()) return;
+    if (ch < 0 || ch >= 8 || drumFolders.isEmpty() || folderIndex >= drumFolders.size()) return;
     juce::File sample = drumFolders[folderIndex].getChildFile(fileName);
     if (sample.existsAsFile()) {
         auto* reader = formatManager.createReaderFor(sample);
@@ -620,7 +620,7 @@ void ExtasisRhythmProcessor::loadSmartSampleForChannel(int i, int kit) {
 }
 
 void ExtasisRhythmProcessor::loadGlobalDrumKit(int kit) {
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         loadSmartSampleForChannel(i, kit);
         // --- BUG DE UI DESINCRONIZADA ARREGLADO ---
         // Le avisamos al UI que cambiamos la carpeta fuente (Kit) de este canal
@@ -635,7 +635,7 @@ void ExtasisRhythmProcessor::loadGlobalDrumKit(int kit) {
 void ExtasisRhythmProcessor::randomizeKit() {
     if (drumFolders.isEmpty()) return;
 
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         int randomFolderIdx = juce::Random::getSystemRandom().nextInt(drumFolders.size());
         loadSmartSampleForChannel(i, randomFolderIdx);
 
@@ -648,7 +648,7 @@ void ExtasisRhythmProcessor::randomizeKit() {
 }
 
 void ExtasisRhythmProcessor::triggerChannel(int ch, float vel) {
-    if (ch >= 0 && ch < 12 && sampleBuffers[ch] != nullptr) {
+    if (ch >= 0 && ch < 8 && sampleBuffers[ch] != nullptr) {
         if (samplePositions[ch].load() >= 0.0) {
             samplePositionsOld[ch] = samplePositions[ch].load();
             fadeOld[ch] = 1.0f;
@@ -661,7 +661,7 @@ void ExtasisRhythmProcessor::triggerChannel(int ch, float vel) {
 
 void ExtasisRhythmProcessor::killAllAudio() {
     pumpEnvelope = 0.0f;
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         samplePositions[i] = -1.0;
         samplePositionsOld[i] = -1.0;
         fadeOld[i] = 0.0f;
@@ -695,7 +695,7 @@ void ExtasisRhythmProcessor::resetAllParameters() {
     setParam ("delayTime", 300.0f); setParam ("delayFb", 0.30f); setParam ("delayModRate", 1.5f); setParam ("delayModDepth", 0.2f);
     setParam ("delaySync", 0.0f); setParam ("tripletFill", 0.0f); setParam ("fillFit", 0.0f); setParam ("fillLength", 16.0f);
 
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         juce::String ch = juce::String(i);
         setParam ("gain" + ch, 0.85f); setParam ("pan" + ch, 0.0f); setParam ("pitch" + ch, 0.0f); setParam ("tone" + ch, 0.0f);
         setParam ("attack" + ch, 0.0005f); setParam ("decay" + ch, 0.40f); setParam ("springSend" + ch, 0.0f); setParam ("delaySend" + ch, 0.0f);
@@ -704,7 +704,7 @@ void ExtasisRhythmProcessor::resetAllParameters() {
 }
 
 void ExtasisRhythmProcessor::resetSequencer() {
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         channelSteps[i] = 0; lastSubStep[i] = -1; channelStepSemitones[i] = 0.0f;
         for (int step = 0; step < 32; ++step) {
             savedGlides[currentPattern][i][step] = 0;
@@ -733,7 +733,7 @@ void ExtasisRhythmProcessor::changePattern (int newPattern) {
     if (!isInitialized || newPattern < 0 || newPattern > 7) return;
 
     if (newPattern != currentPattern) {
-        for (int i = 0; i < 12; ++i) {
+        for (int i = 0; i < 8; ++i) {
             for (int s = 0; s < 32; ++s) {
                 if (auto* param = cachedParams.stepParams[i][s])
                     savedPatterns[currentPattern][i][s] = (int)(param->load() + 0.5f);
@@ -746,7 +746,7 @@ void ExtasisRhythmProcessor::changePattern (int newPattern) {
         currentPattern = newPattern;
     }
 
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         for (int s = 0; s < 32; ++s) {
             if (auto* p = apvts.getParameter ("step_" + juce::String(i) + "_" + juce::String(s))) {
                 if (auto* rp = dynamic_cast<juce::RangedAudioParameter*>(p)) {
@@ -767,7 +767,7 @@ void ExtasisRhythmProcessor::changePattern (int newPattern) {
 void ExtasisRhythmProcessor::copyToNextPattern() {
     if (!isInitialized) return;
 
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         for (int s = 0; s < 32; ++s) {
             if (auto* param = cachedParams.stepParams[i][s])
                 savedPatterns[currentPattern][i][s] = (int)(param->load() + 0.5f);
@@ -780,7 +780,7 @@ void ExtasisRhythmProcessor::copyToNextPattern() {
 
     int nextPattern = (currentPattern + 1) % 8;
 
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         for (int s = 0; s < 32; ++s) {
             savedPatterns[nextPattern][i][s] = savedPatterns[currentPattern][i][s];
             savedGlides[nextPattern][i][s]   = savedGlides[currentPattern][i][s];
@@ -804,7 +804,7 @@ void ExtasisRhythmProcessor::loadCustomPreset(const juce::File& file) {
 
 void ExtasisRhythmProcessor::getStateInformation (juce::MemoryBlock& destData) {
     if (isInitialized && apvts.getParameter("step_0_0") != nullptr) {
-        for (int i = 0; i < 12; ++i) {
+        for (int i = 0; i < 8; ++i) {
             for (int s = 0; s < 32; ++s) {
                 if (auto* param = cachedParams.stepParams[i][s])
                     savedPatterns[currentPattern][i][s] = (int)(param->load() + 0.5f);
@@ -821,7 +821,7 @@ void ExtasisRhythmProcessor::getStateInformation (juce::MemoryBlock& destData) {
     auto patternsXml = new juce::XmlElement("PATTERNS");
     patternsXml->setAttribute("CURRENT_PATTERN", currentPattern);
     for (int p = 0; p < 8; ++p) {
-        for (int i = 0; i < 12; ++i) {
+        for (int i = 0; i < 8; ++i) {
             juce::String stepData, glideData, noteData;
             for (int s = 0; s < 32; ++s) {
                 stepData += juce::String(savedPatterns[p][i][s]) + ",";
@@ -836,14 +836,14 @@ void ExtasisRhythmProcessor::getStateInformation (juce::MemoryBlock& destData) {
         for (int s = 0; s < 16; ++s) fillData += juce::String(savedFills[p][s]) + ",";
         patternsXml->setAttribute("P" + juce::String(p) + "_FILLS", fillData);
     }
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         patternsXml->setAttribute("SEQ_MODE_CH" + juce::String(i), seqModes[i].load());
     }
     patternsXml->setAttribute("FILL_SEQ_MODE", fillSeqMode.load());
     xml->addChildElement(patternsXml);
 
     auto samplesXml = new juce::XmlElement("SAMPLES");
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         int chKit = (int)cachedParams.sampleSource[i]->load();
         samplesXml->setAttribute("CH" + juce::String(i) + "_SAMPLE", currentSampleName[i]);
         samplesXml->setAttribute("CH" + juce::String(i) + "_KIT_IDX", chKit);
@@ -866,7 +866,7 @@ void ExtasisRhythmProcessor::setStateInformation (const void* data, int sizeInBy
         if (auto* patternsXml = xmlState->getChildByName("PATTERNS")) {
             currentPattern = patternsXml->getIntAttribute ("CURRENT_PATTERN", 0);
             for (int p = 0; p < 8; ++p) {
-                for (int i = 0; i < 12; ++i) {
+                for (int i = 0; i < 8; ++i) {
                     juce::StringArray steps;
                     steps.addTokens(patternsXml->getStringAttribute("P" + juce::String(p) + "_CH" + juce::String(i)), ",", "");
                     for (int s = 0; s < 32 && s < steps.size(); ++s) savedPatterns[p][i][s] = steps[s].getIntValue();
@@ -883,7 +883,7 @@ void ExtasisRhythmProcessor::setStateInformation (const void* data, int sizeInBy
                 fills.addTokens(patternsXml->getStringAttribute("P" + juce::String(p) + "_FILLS"), ",", "");
                 for (int s = 0; s < 16 && s < fills.size(); ++s) savedFills[p][s] = fills[s].getIntValue();
             }
-            for (int i = 0; i < 12; ++i) {
+            for (int i = 0; i < 8; ++i) {
                 if (patternsXml->hasAttribute("SEQ_MODE_CH" + juce::String(i)))
                     seqModes[i].store (patternsXml->getIntAttribute("SEQ_MODE_CH" + juce::String(i), 0));
             }
@@ -892,7 +892,7 @@ void ExtasisRhythmProcessor::setStateInformation (const void* data, int sizeInBy
         }
 
         if (auto* samplesXml = xmlState->getChildByName("SAMPLES")) {
-            for (int i = 0; i < 12; ++i) {
+            for (int i = 0; i < 8; ++i) {
                 juce::String sName = samplesXml->getStringAttribute("CH" + juce::String(i) + "_SAMPLE");
                 if (sName.isEmpty()) sName = samplesXml->getStringAttribute("CH" + juce::String(i)); 
 
@@ -919,7 +919,7 @@ void ExtasisRhythmProcessor::setStateInformation (const void* data, int sizeInBy
             }
         }
 
-        for (int i = 0; i < 12; ++i) {
+        for (int i = 0; i < 8; ++i) {
             for (int s = 0; s < 32; ++s) {
                 if (auto* p = apvts.getParameter ("step_" + juce::String(i) + "_" + juce::String(s))) {
                     if (auto* rp = dynamic_cast<juce::RangedAudioParameter*>(p)) {
@@ -959,10 +959,10 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     juce::MidiBuffer incomingMidi;
     incomingMidi.addEvents (midi, 0, buffer.getNumSamples(), 0);
     midi.clear();
-    SampleBuffer::Ptr localSamples[12];
+    SampleBuffer::Ptr localSamples[8];
     {
         juce::SpinLock::ScopedLockType sl(pointerLock);
-        for (int i=0; i<12; ++i) localSamples[i] = sampleBuffers[i];
+        for (int i=0; i< 8; ++i) localSamples[i] = sampleBuffers[i];
     }
 
     buffer.clear(); 
@@ -980,16 +980,16 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         }
     }
     
-    float* stemWriteL[12] = { nullptr };
-    float* stemWriteR[12] = { nullptr };
-    bool stemEnabled[12] = { false };
+    float* stemWriteL[8] = { nullptr };
+    float* stemWriteR[8] = { nullptr };
+    bool stemEnabled[8] = { false };
     
     int totalBufferChannels = buffer.getNumChannels();
     float* masterL = totalBufferChannels > 0 ? buffer.getWritePointer(0) : nullptr;
     float* masterR = totalBufferChannels > 1 ? buffer.getWritePointer(1) : masterL;
     
     int totalOutputBuses = getBusCount(false);
-    for (int b = 0; b < 12; ++b) {
+    for (int b = 0; b < 8; ++b) {
         int busIdx = b + 1;
         if (busIdx < totalOutputBuses) {
             if (auto* bus = getBus(false, busIdx)) {
@@ -1008,12 +1008,12 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         }
     }
     
-    for (int i = 0; i < 12; ++i) { int c = flashCounters[i].load(); if (c > 0) flashCounters[i] = c - 1; }
+    for (int i = 0; i < 8; ++i) { int c = flashCounters[i].load(); if (c > 0) flashCounters[i] = c - 1; }
     
     for (const auto meta : incomingMidi) { 
         auto msg = meta.getMessage(); 
         int ch = getChannelForMidiNote (msg.getNoteNumber());
-        if (ch >= 0 && ch < 12) {
+        if (ch >= 0 && ch < 8) {
             if (msg.isNoteOn()) {
                 triggerChannel (ch, msg.getFloatVelocity());
                 juce::MidiMessage outMsg = msg;
@@ -1097,11 +1097,11 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     float mVol = cachedParams.masterVolume->load(); 
     float mClip = cachedParams.masterClipper->load();
 
-    float chanVol[12], chanPan[12], chanPitch[12], chanSSend[12], chanDSend[12], chanAtt[12], chanDec[12];
-    bool chanMute[12], chanSolo[12], chanEnv[12], chanTriplet[12], chanFit[12];
+    float chanVol[8], chanPan[8], chanPitch[8], chanSSend[8], chanDSend[8], chanAtt[8], chanDec[8];
+    bool chanMute[8], chanSolo[8], chanEnv[8], chanTriplet[8], chanFit[8];
     bool anySolo = false;
 
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         juce::String ch = juce::String(i);
         volSmoother[i].setTargetValue(cachedParams.chanGain[i]->load());
         panSmoother[i].setTargetValue(cachedParams.chanPan[i]->load());
@@ -1135,7 +1135,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
     if (!playing) {
         internalElapsedBeats = 0.0;
-        for (int i = 0; i < 12; ++i) { 
+        for (int i = 0; i < 8; ++i) { 
             lastSubStep[i] = -1; 
             channelStepSemitones[i] = 0.0f;
             if (activeMidiNotes[i] >= 0) {
@@ -1168,8 +1168,8 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     for (int s = 0; s < buffer.getNumSamples(); ++s) {
         smoothedDelayTime = smoothedDelayTime * 0.995f + targetDelSamples * 0.005f;
 
-        float currentMuteGain[12];
-        for (int i = 0; i < 12; ++i) {
+        float currentMuteGain[8];
+        for (int i = 0; i < 8; ++i) {
             chanVol[i] = volSmoother[i].getNextValue();
             chanPan[i] = panSmoother[i].getNextValue();
             currentMuteGain[i] = muteSmoother[i].getNextValue();
@@ -1222,7 +1222,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             
             int ratchets = (currentFillV == 1) ? 2 : ((currentFillV == 2) ? 3 : 1);
 
-            for (int ch = 0; ch < 12; ++ch) {
+            for (int ch = 0; ch < 8; ++ch) {
                 int maxLen = (int) (cachedParams.lengthParams[ch] != nullptr ? cachedParams.lengthParams[ch]->load() : 16.0f);
                 int numSteps = chanFit[ch] ? juce::jlimit(1, 32, maxLen > 0 ? maxLen : 16) : (chanTriplet[ch] ? juce::jlimit(1, 24, maxLen > 0 ? maxLen : 12) : juce::jlimit(1, 32, maxLen > 0 ? maxLen : 16));
 
@@ -1304,7 +1304,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         float reverbSendTotalL = 0.0f, reverbSendTotalR = 0.0f; 
         float delaySendTotalL = 0.0f, delaySendTotalR = 0.0f;
 
-        for (int i = 0; i < 12; ++i) {
+        for (int i = 0; i < 8; ++i) {
             if (localSamples[i] == nullptr) continue;
 
             float chOutL = 0.0f; float chOutR = 0.0f;
@@ -1369,7 +1369,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                     float pannedR = chOutR * std::sqrt (0.5f * (1.0f + chanPan[i])) * finalGain;
                     pannedL = fastTanh (pannedL * 1.5f); pannedR = fastTanh (pannedR * 1.5f);
 
-                    if (i < 12 && stemEnabled[i]) {
+                    if (i < 8 && stemEnabled[i]) {
                         if (stemWriteL[i] != nullptr) stemWriteL[i][s] += (pannedL * 2.0f);
                         if (stemWriteR[i] != nullptr) stemWriteR[i][s] += (pannedR * 2.0f);
                     }
@@ -1451,7 +1451,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         float mixedL = kickL + otherL;
         float mixedR = kickR + otherR;
 
-        if (!springDelayL[0].empty()) {
+        if (false && !springDelayL[0].empty()) { // BYPASSED FOR HW DSP DIET
             float feedback = 0.2f + springDec * 0.75f;
             float driveL = fastTanh (reverbSendTotalL * 1.5f); float driveR = fastTanh (reverbSendTotalR * 1.5f);
             float tankInL = springToneFilterL.processSample(0, driveL); float tankInR = springToneFilterR.processSample(0, driveR);
@@ -1614,23 +1614,19 @@ void ExtasisRhythmProcessor::loadTagsFromJson() {
     juce::var parsed = juce::JSON::parse(tagsFile);
     if (auto* obj = parsed.getDynamicObject()) {
         juce::StringArray keys = {"0_Kick", "1_Snare", "2_ClosedHat", "3_OpenHat", "4_Clap", "5_Rimshot", "6_HiPerc", "7_MidPerc", "8_LowPerc", "9_Cowbell", "10_Crash", "11_Ride"};
-        for (int i = 0; i < 12; ++i) {
+        for (int i = 0; i < 8; ++i) {
             juce::String tokens = obj->getProperty(keys[i]).toString();
             channelTags[i].addTokens(tokens, " ,", "");
         }
     } else {
-        channelTags[0].addTokens("bd kik kick kck bombo sub bassdrum bassd kickdrum drum_kik", " ", "");
-        channelTags[1].addTokens("sd sn snare tarola caja rim snar s snaredrum drum_snr", " ", "");
-        channelTags[2].addTokens("ch hh closed hat hihat clh hat_c hh_c cht closedhat closed_hh", " ", "");
-        channelTags[3].addTokens("oh open oph ohat hat_o hh_o oht openhat open_hh splash hho", " ", "");
-        channelTags[4].addTokens("cp clap clp palmas handclap groupclap cla", " ", "");
-        channelTags[5].addTokens("rs rim rimshot side sidestick woodblock wblk wood clave claves", " ", "");
-        channelTags[6].addTokens("ht hightom tomhi tom1 h-tom tom_hi conga_hi conga_high bongo_hi bnh", " ", "");
-        channelTags[7].addTokens("mt midtom tommid tom2 m-tom tom_mid conga_mid conga bongo_lo bol", " ", "");
-        channelTags[8].addTokens("lt lowtom tomlow tom3 floor ftom l-tom tom_lo timbale tmb conga_lo conga_low", " ", "");
-        channelTags[9].addTokens("cb cowbell bell cwb cow quijada vibraslap agogo ago shaker shk tambourine tamb maraca mrc", " ", "");
-        channelTags[10].addTokens("cr crash cym cymbal crs china", " ", "");
-        channelTags[11].addTokens("rd ride rid ride_bell ride_bow cym_ride", " ", "");
+        channelTags[0].addTokens("bd kik kick kck bombo sub bassdrum bassd kickdrum drum_kik", " ", ""); // Kick
+        channelTags[1].addTokens("sd sn snare tarola caja rim snar s snaredrum drum_snr rs rimshot side", " ", ""); // Snare/Rim
+        channelTags[2].addTokens("cp clap clp palmas handclap groupclap cla", " ", ""); // Clap
+        channelTags[3].addTokens("ch hh closed hat hihat clh hat_c hh_c cht closedhat closed_hh", " ", ""); // Closed Hat
+        channelTags[4].addTokens("oh open oph ohat hat_o hh_o oht openhat open_hh hho", " ", ""); // Open Hat
+        channelTags[5].addTokens("ht hightom tomhi tom1 h-tom tom_hi conga_hi conga_high bongo_hi bnh cb cowbell bell cwb", " ", ""); // Perc1
+        channelTags[6].addTokens("mt midtom tommid tom2 m-tom tom_mid conga_mid conga bongo_lo bol lt lowtom tomlow tom3 floor ftom l-tom", " ", ""); // Perc2
+        channelTags[7].addTokens("cr crash cym cymbal crs china splash rd ride rid ride_bell", " ", ""); // Crash/Ride
     }
 }
 

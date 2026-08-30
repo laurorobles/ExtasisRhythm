@@ -59,7 +59,7 @@ public:
     static int getMidiNoteForChannel (int ch);
     static juce::String getMidiNoteNameForChannel (int ch);
 
-    int activeMidiNotes[12] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+    int activeMidiNotes[8] = { -1, -1, -1, -1, -1, -1, -1, -1 };
 
     void triggerChannel (int ch, float vel);
     void killAllAudio();
@@ -81,11 +81,11 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 
-    std::atomic<int> channelSteps[12];
-    std::atomic<float> channelVelocities[12];
-    std::atomic<int> flashCounters[12];
+    std::atomic<int> channelSteps[8];
+    std::atomic<float> channelVelocities[8];
+    std::atomic<int> flashCounters[8];
     juce::StringArray currentSampleName;
-    juce::StringArray channelTags[12];
+    juce::StringArray channelTags[8];
     void loadTagsFromJson();
     int levenshteinDistance(const juce::String& s1, const juce::String& s2) const;
     int analyzeAudioFile(const juce::File& file);
@@ -102,23 +102,23 @@ public:
     juce::File samplesFolder;
     juce::Array<juce::File> drumFolders;
     
-    std::atomic<double> samplePositions[12];
-    std::atomic<double> samplePositionsOld[12];
-    std::atomic<float>  fadeOld[12];
+    std::atomic<double> samplePositions[8];
+    std::atomic<double> samplePositionsOld[8];
+    std::atomic<float>  fadeOld[8];
 
-    std::atomic<int> seqModes[12];
-    std::atomic<int> seqPingDir[12]; 
-    int seqPingPos[12] = {};         
+    std::atomic<int> seqModes[8];
+    std::atomic<int> seqPingDir[8]; 
+    int seqPingPos[8] = {};         
 
     std::atomic<int> fillSeqMode {0};
     int fillSeqPos = 0;
 
-    int savedGlides[8][12][32];
-    int savedNotes[8][12][32]; 
-    std::atomic<float> channelStepSemitones[12];
+    int savedGlides[8][8][32];
+    int savedNotes[8][8][32]; 
+    std::atomic<float> channelStepSemitones[8];
 
-    std::atomic<int64_t> lastRatchetTick[12];
-    std::atomic<int> currentMappedStep[12];
+    std::atomic<int64_t> lastRatchetTick[8];
+    std::atomic<int> currentMappedStep[8];
 
 private:
     uint64_t samplesProcessed = 0;
@@ -134,21 +134,21 @@ private:
     juce::Random random;
 
     int currentPattern = 0;
-    int savedPatterns[8][12][32];
+    int savedPatterns[8][8][32];
     int savedFills[8][16];
 
     double internalElapsedBeats = 0.0;
     int lastHostStep = -1;
-    int lastSubStep[12];
+    int lastSubStep[8];
     int lastFillSubStep = -1;
 
-    juce::LinearSmoothedValue<float> volSmoother[12];
-    juce::LinearSmoothedValue<float> panSmoother[12];
-    juce::LinearSmoothedValue<float> pitchSmoother[12];
-    juce::LinearSmoothedValue<float> cutSmoother[12];
-    juce::LinearSmoothedValue<float> muteSmoother[12];
+    juce::LinearSmoothedValue<float> volSmoother[8];
+    juce::LinearSmoothedValue<float> panSmoother[8];
+    juce::LinearSmoothedValue<float> pitchSmoother[8];
+    juce::LinearSmoothedValue<float> cutSmoother[8];
+    juce::LinearSmoothedValue<float> muteSmoother[8];
      
-    SampleBuffer::Ptr sampleBuffers[12];
+    SampleBuffer::Ptr sampleBuffers[8];
     juce::SpinLock pointerLock;
     juce::dsp::StateVariableTPTFilter<float> kickHpfL, kickHpfR, otherHpfL, otherHpfR;
     juce::dsp::StateVariableTPTFilter<float> kickLpfL, kickLpfR, otherLpfL, otherLpfR;
@@ -156,8 +156,8 @@ private:
     
     juce::dsp::StateVariableTPTFilter<float> delayFeedbackLpfL, delayFeedbackLpfR;
     juce::dsp::StateVariableTPTFilter<float> springToneFilterL, springToneFilterR;
-    juce::dsp::StateVariableTPTFilter<float> channelToneFilters[12];
-    juce::dsp::StateVariableTPTFilter<float> envFilterL[12], envFilterR[12];
+    juce::dsp::StateVariableTPTFilter<float> channelToneFilters[8];
+    juce::dsp::StateVariableTPTFilter<float> envFilterL[8], envFilterR[8];
 
     std::vector<float> flangerBufferL, flangerBufferR;
     int flangerWritePos = 0;
@@ -191,8 +191,8 @@ private:
     }
 
     struct CachedParameters {
-        std::atomic<float>* stepParams[12][32] = {};
-        std::atomic<float>* lengthParams[12] = {};
+        std::atomic<float>* stepParams[8][32] = {};
+        std::atomic<float>* lengthParams[8] = {};
         std::atomic<float>* fillStepParams[16] = {};
         std::atomic<float>* fillLength = nullptr;
         std::atomic<float>* tripletFill = nullptr;
@@ -238,20 +238,20 @@ private:
         std::atomic<float>* masterVolume = nullptr;
         std::atomic<float>* masterClipper = nullptr;
         
-        std::atomic<float>* chanGain[12] = {};
-        std::atomic<float>* chanPan[12] = {};
-        std::atomic<float>* chanPitch[12] = {};
-        std::atomic<float>* chanSSend[12] = {};
-        std::atomic<float>* chanDSend[12] = {};
-        std::atomic<float>* chanAttack[12] = {};
-        std::atomic<float>* chanDecay[12] = {};
-        std::atomic<float>* chanMute[12] = {};
-        std::atomic<float>* chanSolo[12] = {};
-        std::atomic<float>* chanEnv[12] = {};
-        std::atomic<float>* chanTriplet[12] = {};
-        std::atomic<float>* chanFit[12] = {};
-        std::atomic<float>* chanTone[12] = {};
-        std::atomic<float>* sampleSource[12] = {};
+        std::atomic<float>* chanGain[8] = {};
+        std::atomic<float>* chanPan[8] = {};
+        std::atomic<float>* chanPitch[8] = {};
+        std::atomic<float>* chanSSend[8] = {};
+        std::atomic<float>* chanDSend[8] = {};
+        std::atomic<float>* chanAttack[8] = {};
+        std::atomic<float>* chanDecay[8] = {};
+        std::atomic<float>* chanMute[8] = {};
+        std::atomic<float>* chanSolo[8] = {};
+        std::atomic<float>* chanEnv[8] = {};
+        std::atomic<float>* chanTriplet[8] = {};
+        std::atomic<float>* chanFit[8] = {};
+        std::atomic<float>* chanTone[8] = {};
+        std::atomic<float>* sampleSource[8] = {};
     } cachedParams;
 
     void initializeParameterPointers();

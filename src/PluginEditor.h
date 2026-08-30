@@ -319,29 +319,29 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> fillLengthAtt;
     int fillSeqModeState = 0;
 
-    juce::ComboBox sampleSourceSelectors[12];
-    juce::ComboBox sampleVariantSelectors[12];
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> sampleSourceAtts[12];
+    juce::ComboBox sampleSourceSelectors[8];
+    juce::ComboBox sampleVariantSelectors[8];
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> sampleSourceAtts[8];
 
-    juce::TextButton muteButtons[12], soloButtons[12], envChannelButtons[12], fitButtons[12];
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> muteAtts[12], soloAtts[12], envChanAtts[12], fitAtts[12];
+    juce::TextButton muteButtons[8], soloButtons[8], envChannelButtons[8], fitButtons[8];
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> muteAtts[8], soloAtts[8], envChanAtts[8], fitAtts[8];
 
-    juce::Slider volumeSliders[12], panSliders[12], pitchSliders[12], toneSliders[12];
-    juce::Slider attackSliders[12], decaySliders[12], springSendSliders[12], delaySendSliders[12];
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> volAtts[12], panAtts[12], pitchAtts[12], toneAtts[12];
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attAtts[12], decAtts[12], springSendAtts[12], delaySendAtts[12];
+    juce::Slider volumeSliders[8], panSliders[8], pitchSliders[8], toneSliders[8];
+    juce::Slider attackSliders[8], decaySliders[8], springSendSliders[8], delaySendSliders[8];
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> volAtts[8], panAtts[8], pitchAtts[8], toneAtts[8];
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attAtts[8], decAtts[8], springSendAtts[8], delaySendAtts[8];
 
     std::vector<std::unique_ptr<ChannelLedButton>> channelLedButtons;
 
-    juce::Slider hiddenLengthSliders[12];
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> stepLengthAtts[12];
+    juce::Slider hiddenLengthSliders[8];
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> stepLengthAtts[8];
 
-    juce::TextButton minusButtons[12], plusButtons[12], seqModeButtons[12];
-    juce::TextButton shiftLeftButtons[12], shiftRightButtons[12];
-    juce::Label lengthLabels[12];
-    int seqModes[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
+    juce::TextButton minusButtons[8], plusButtons[8], seqModeButtons[8];
+    juce::TextButton shiftLeftButtons[8], shiftRightButtons[8];
+    juce::Label lengthLabels[8];
+    int seqModes[8] = {0,0,0,0,0,0,0,0,0,0,0,0};
 
-    StepButton stepButtons[12][32];
+    StepButton stepButtons[8][32];
 
     std::unique_ptr<juce::ResizableCornerComponent> cornerResizer;
     juce::Image logoImage;

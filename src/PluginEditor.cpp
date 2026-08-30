@@ -248,7 +248,7 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
                 pi->endChangeGesture(); 
             } 
         } 
-        for (int i = 0; i < 12; ++i) { 
+        for (int i = 0; i < 8; ++i) { 
             audioProcessor.channelSteps[i] = 0; 
             audioProcessor.samplePositions[i] = -1.0; 
         } 
@@ -350,7 +350,7 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
 
     resetButton.onClick = [this] { 
         audioProcessor.resetAllParameters(); 
-        for (int i = 0; i < 12; ++i) {
+        for (int i = 0; i < 8; ++i) {
             fitButtons[i].setToggleState (false, juce::dontSendNotification);
             fitButtons[i].setButtonText ("FIX");
             updateLengthLabel (i);
@@ -406,7 +406,7 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
                 int globalKit = (int)audioProcessor.apvts.getRawParameterValue("globalKitChoice")->load();
                 globalKitSelector.setSelectedId (globalKit + 1, juce::dontSendNotification);
 
-                for (int i = 0; i < 12; ++i) {
+                for (int i = 0; i < 8; ++i) {
                     int chKit = (int)audioProcessor.apvts.getRawParameterValue("sampleSource_" + juce::String(i))->load();
                     sampleSourceSelectors[i].setSelectedId (chKit + 1, juce::dontSendNotification);
                     sampleVariantSelectors[i].clear (juce::dontSendNotification);
@@ -447,7 +447,7 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
         int kitIdx = globalKitSelector.getSelectedId() - 1; 
         if (kitIdx < 0) return;
         
-        for (int i = 0; i < 12; ++i) {
+        for (int i = 0; i < 8; ++i) {
             auto variants = audioProcessor.getVariantsForChannel(kitIdx, i);
             bool isValid = variants.contains(audioProcessor.currentSampleName[i]);
             
@@ -487,7 +487,7 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
         audioProcessor.randomizeKit();
         
         // 2. Actualizamos la UI canal por canal leyendo su nuevo estado
-        for (int i = 0; i < 12; ++i) {
+        for (int i = 0; i < 8; ++i) {
             // Leer qué carpeta se le asignó a este canal específico
             int chKitIdx = (int)audioProcessor.apvts.getRawParameterValue("sampleSource_" + juce::String(i))->load();
             
@@ -765,7 +765,7 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     }
 
     auto kitNames = audioProcessor.getDrumKitNames();
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         juce::String chStr = juce::String(i);
         
         channelLedButtons.push_back (std::make_unique<ChannelLedButton> (audioProcessor, i));
@@ -1139,7 +1139,7 @@ void ExtasisRhythmEditor::refreshKitSelectors()
     globalKitSelector.addItemList (kitNames, 1);
     globalKitSelector.setSelectedId (1, juce::dontSendNotification);
 
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         sampleSourceSelectors[i].clear (juce::dontSendNotification);
         sampleSourceSelectors[i].addItemList (kitNames, 1);
         sampleSourceSelectors[i].setSelectedId (1, juce::dontSendNotification);
@@ -1172,7 +1172,7 @@ void ExtasisRhythmEditor::updateStepButtonVisuals (int ch, int step)
         stepButtons[ch][step].hasGlide = hasGlide;
         stepButtons[ch][step].semitoneOffset = semitone;
 
-        juce::String labels[12] = { "KICK", "SNARE", "CLOSED HAT", "OPEN HAT", "CLAP", "RIMSHOT", "HI PERC", "MID PERC", "LOW PERC", "COWBELL", "CRASH", "RIDE" };
+        juce::String labels[8] = { "KICK", "SNARE", "CLOSED HAT", "OPEN HAT", "CLAP", "RIMSHOT", "HI PERC", "MID PERC", "LOW PERC", "COWBELL", "CRASH", "RIDE" };
         
         float basePitchParam = audioProcessor.apvts.getRawParameterValue ("pitch" + juce::String(ch))->load();
         int rootMidiNote = 60; 
@@ -1237,7 +1237,7 @@ void ExtasisRhythmEditor::updatePatternButtonStates()
 
 void ExtasisRhythmEditor::refreshAllStepButtons()
 {
-    for (int ch = 0; ch < 12; ++ch) {
+    for (int ch = 0; ch < 8; ++ch) {
         for (int s = 0; s < 32; ++s) {
             updateStepButtonVisuals (ch, s);
         }
@@ -1252,7 +1252,7 @@ void ExtasisRhythmEditor::timerCallback()
     bool isPlaying = (audioProcessor.isSyncedToHost.load() ? audioProcessor.hostPlaying.load() 
                                                            : (audioProcessor.apvts.getRawParameterValue("isPlaying")->load() > 0.5f));
 
-    for (int i = 0; i < 12; ++i) { 
+    for (int i = 0; i < 8; ++i) { 
         if (audioProcessor.flashCounters[i].load() > 0)
             channelLedButtons[i]->repaint();
     }
@@ -1475,9 +1475,9 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
         g.fillRect ((float)(meterX + 8), yP, 5.0f, segHeight - 1.5f);
     }
 
-    juce::String labels[12] = { "KICK", "SNARE", "CLOSED HAT", "OPEN HAT", "CLAP", "RIMSHOT", "HI PERC", "MID PERC", "LOW PERC", "COWBELL", "CRASH", "RIDE" };
+    juce::String labels[8] = { "KICK", "SNARE", "CLOSED HAT", "OPEN HAT", "CLAP", "RIMSHOT", "HI PERC", "MID PERC", "LOW PERC", "COWBELL", "CRASH", "RIDE" };
     
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 8; ++i) {
         int x = 10 + i * 98; 
         g.setColour (juce::Colours::black.withAlpha (0.15f)); 
         g.fillRoundedRectangle ((float)(x + 3), 189.0f, 92.0f, 256.0f, 4.0f);
@@ -1521,7 +1521,7 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
         int stepsStartX = seqX + controlsAreaWidth + 8;
         int totalStepsWidth = seqW - controlsAreaWidth - 16;
         
-        for (int i = 0; i < 12; ++i) {
+        for (int i = 0; i < 8; ++i) {
             g.setColour (juce::Colours::black.withAlpha(0.4f)); 
             g.setFont (juce::FontOptions (9.5f, juce::Font::bold)); 
             g.drawText (labels[i], seqX + 6, seqY + 8 + (i * 24), 74, 20, juce::Justification::centredLeft);
@@ -1543,7 +1543,7 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
             g.drawText (juce::String (m + 1), (int)(stepXCenter - 15.0f), (int)(indicatorY + 4.0f), 30, 12, juce::Justification::centred);
         }
 
-        for (int i = 0; i < 12; ++i) {
+        for (int i = 0; i < 8; ++i) {
             int act = audioProcessor.channelSteps[i].load(); 
             bool isFitMode = fitButtons[i].getToggleState();
             int maxAllowed = isFitMode ? 32 : 16;
@@ -1690,7 +1690,7 @@ void ExtasisRhythmEditor::resized()
     antiAliasButton.setBounds   (sz(masterX + 68, 123, 44, 17));
     limiterButton.setBounds     (sz(masterX + 18, 142, 94, 17));
 
-    for (int cIdx = 0; cIdx < 12; ++cIdx) {
+    for (int cIdx = 0; cIdx < 8; ++cIdx) {
         int x = 10 + cIdx * 98;
         channelLedButtons[cIdx]->setBounds (sz(x + 5, 187, 82, 28));
         muteButtons[cIdx].setBounds (sz(x + 6, 218, 18, 16)); 
@@ -1718,7 +1718,7 @@ void ExtasisRhythmEditor::resized()
     int gridAreaWidth = seqTotalW - controlsAreaWidth - 16;
     int stepsStartX = seqX + controlsAreaWidth + 8;
 
-    for (int seqIdx = 0; seqIdx < 12; ++seqIdx) {
+    for (int seqIdx = 0; seqIdx < 8; ++seqIdx) {
         bool isFitMode = fitButtons[seqIdx].getToggleState();
         int maxAllowed = isFitMode ? 32 : 16;
         int curLen = (int) audioProcessor.apvts.getRawParameterValue ("length" + juce::String(seqIdx))->load();
