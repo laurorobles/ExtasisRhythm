@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "LicenseManager.h"
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
