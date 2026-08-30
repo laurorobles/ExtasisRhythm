@@ -68,8 +68,16 @@ public:
     void changePattern (int newPattern);
     void copyToNextPattern();
     int getCurrentPattern() const { return currentPattern; }
+
     void saveCustomPreset (const juce::File& file);
     void loadCustomPreset (const juce::File& file);
+
+    // --- SISTEMA DE CACHÉ MIR (JSON) ---
+    juce::DynamicObject::Ptr analysisCacheObj;
+    juce::File cacheFile;
+    void loadAnalysisCache();
+    void saveAnalysisCache();
+    // -----------------------------------
 
     juce::AudioProcessorValueTreeState apvts;
 
@@ -109,7 +117,6 @@ public:
     int savedNotes[8][12][32]; 
     std::atomic<float> channelStepSemitones[12];
 
-    // Memoria del Fill (Ratchet / Sub-pasos)
     std::atomic<int64_t> lastRatchetTick[12];
     std::atomic<int> currentMappedStep[12];
 
@@ -139,6 +146,7 @@ private:
     juce::LinearSmoothedValue<float> panSmoother[12];
     juce::LinearSmoothedValue<float> pitchSmoother[12];
     juce::LinearSmoothedValue<float> cutSmoother[12];
+    juce::LinearSmoothedValue<float> muteSmoother[12];
      
     SampleBuffer::Ptr sampleBuffers[12];
     juce::SpinLock pointerLock;
@@ -168,6 +176,11 @@ private:
     int delayWritePos = 0;
     float delayLfoPhase = 0.0f;
     float smoothedDelayTime = 0.0f;
+
+    float pumpEnvelope = 0.0f;
+    float pcmHoldL = 0.0f;
+    float pcmHoldR = 0.0f;
+    float pcmPhase = 0.0f;
 
     static inline float fastTanh (float x) noexcept
     {

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(ExtasisRhythm VERSION 3.0.0)
+project(ExtasisRhythm VERSION 2.6.0)
 
 if(NOT TARGET juce::juce_audio_utils)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/JUCE/CMakeLists.txt")
@@ -35,7 +35,8 @@ juce_add_plugin(ExtasisRhythm
     PRODUCT_NAME "ExtasisRhythm"
     ICON_BIG "assets/icon.png"
     ICON_SMALL "assets/icon.png"
-    VST3_CATEGORIES "Instrument" "Drum" "Synth")
+    VST3_CATEGORIES "Instrument" "Drum" "Synth"
+)
 
 # Genera automáticamente el JuceHeader.h requerido por JUCE con CMake
 juce_generate_juce_header(ExtasisRhythm)
@@ -51,6 +52,18 @@ target_compile_definitions(ExtasisRhythm PRIVATE
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0
+    JUCE_PLUGIN_MANAGES_MIDI_OUTPUT=1
+)
+
+
+
+# Enlazar la librería a tu VST3
+target_link_libraries(ExtasisRhythm PRIVATE
+    juce::juce_audio_utils
+    juce::juce_dsp
+    PUBLIC juce::juce_recommended_config_flags
+    PUBLIC juce::juce_recommended_lto_flags
+    PUBLIC juce::juce_recommended_warning_flags
 )
 
 target_link_libraries(ExtasisRhythm PRIVATE
@@ -60,6 +73,7 @@ target_link_libraries(ExtasisRhythm PRIVATE
     juce::juce_gui_extra
     juce::juce_opengl
     juce_recommended_config_flags
+    
 )
 # Custom post-build step to guarantee installation and app icon
 add_custom_command(TARGET ExtasisRhythm_Standalone POST_BUILD

@@ -1,6 +1,7 @@
 #include "LicenseManager.h"
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <cmath>
 
 juce::AudioProcessorValueTreeState::ParameterLayout ExtasisRhythmProcessor::createParameterLayout() {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
@@ -66,10 +67,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout ExtasisRhythmProcessor::crea
         params.push_back (std::make_unique<juce::AudioParameterInt> (juce::ParameterID ("sampleSource_" + chStr, 1), "Source", 0, 30, 0));
         params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("gain" + chStr, 1), "Gain", 0.0f, 1.0f, 0.85f));
         params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("pan" + chStr, 1), "Pan", -1.0f, 1.0f, 0.0f));
-        params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("pitch" + chStr, 1), "Pitch", -12.0f, 12.0f, 0.0f));
-        params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("tone" + chStr, 1), "Tone", 200.0f, 15000.0f, 7600.0f));
+        params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("pitch" + chStr, 1), "Pitch", -24.0f, 24.0f, 0.0f));
+        params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("tone" + chStr, 1), "Tone", -1.0f, 1.0f, 0.0f));
         params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("attack" + chStr, 1), "Attack", 0.0005f, 0.05f, 0.0005f));
-        params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("decay" + chStr, 1), "Decay", 0.02f, 3.0f, 0.40f));
+        params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("decay" + chStr, 1), "Decay", juce::NormalisableRange<float>(0.02f, 3.0f, 0.001f, 0.25f), 0.40f));
         params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("springSend" + chStr, 1), "SSend", 0.0f, 1.0f, 0.0f));
         params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("delaySend" + chStr, 1), "DSend", 0.0f, 1.0f, 0.0f));
         params.push_back (std::make_unique<juce::AudioParameterBool> (juce::ParameterID ("mute" + chStr, 1), "Mute", false));
@@ -104,6 +105,7 @@ ExtasisRhythmProcessor::ExtasisRhythmProcessor()
     formatManager.registerBasicFormats();
     scanSampleFolders();
     
+    // --- RESET TOTAL DE PATRONES AL INICIAR ---
     for (int p=0; p<8; ++p) {
         for (int i=0; i<12; ++i) {
             for (int s=0; s<32; ++s) {
@@ -122,7 +124,6 @@ ExtasisRhythmProcessor::ExtasisRhythmProcessor()
         channelVelocities[i] = 1.0f; 
         channelSteps[i] = 0;
         channelStepSemitones[i] = 0.0f;
-        
         lastRatchetTick[i] = -1;
         currentMappedStep[i] = 0;
 
@@ -131,15 +132,25 @@ ExtasisRhythmProcessor::ExtasisRhythmProcessor()
         seqModes[i] = 0;
         seqPingDir[i] = 1;
         seqPingPos[i] = 0;
+        
+        // Forzamos el APVTS a cero (Blank Pattern UI sync)
+        for (int s=0; s<32; ++s) {
+            if (auto* param = apvts.getParameter("step_" + juce::String(i) + "_" + juce::String(s))) {
+                param->setValueNotifyingHost(0.0f);
+            }
+        }
     }
     
+    // --- BUSCAMOS EL KIT 808 POR DEFAULT ---
     int defaultKitIdx = 0;
     for (int k = 0; k < drumFolders.size(); ++k) {
-        if (drumFolders[k].getFileName().toLowerCase().contains("sequential")) {
+        if (drumFolders[k].getFileName().toLowerCase().contains("707")) {
             defaultKitIdx = k;
             break;
         }
     }
+    
+    // Actualizamos el APVTS Global antes de inicializar la UI
     if (auto* kitParam = apvts.getParameter("globalKitChoice")) {
         kitParam->beginChangeGesture();
         kitParam->setValueNotifyingHost(kitParam->convertTo0to1((float)defaultKitIdx));
@@ -147,7 +158,9 @@ ExtasisRhythmProcessor::ExtasisRhythmProcessor()
     }
 
     loadTagsFromJson();
+    
     if (!drumFolders.isEmpty()) loadGlobalDrumKit(defaultKitIdx);
+    
     initializeParameterPointers();
 
     isInitialized = true;
@@ -167,6 +180,27 @@ juce::File ExtasisRhythmProcessor::getConfigFile()
         .getChildFile ("ExtasisRhythm")
         .getChildFile ("settings.xml");
 #endif
+}
+
+void ExtasisRhythmProcessor::loadAnalysisCache() {
+    cacheFile = samplesFolder.getChildFile(".extasis_cache.json");
+    if (cacheFile.existsAsFile()) {
+        juce::var parsed = juce::JSON::parse(cacheFile);
+        if (parsed.isObject()) {
+            analysisCacheObj = parsed.getDynamicObject();
+        }
+    }
+    if (analysisCacheObj == nullptr) {
+        analysisCacheObj = new juce::DynamicObject();
+    }
+}
+
+void ExtasisRhythmProcessor::saveAnalysisCache() {
+    if (analysisCacheObj != nullptr) {
+        juce::var jsonVar(analysisCacheObj.get());
+        juce::String jsonString = juce::JSON::toString(jsonVar);
+        cacheFile.replaceWithText(jsonString);
+    }
 }
 
 void ExtasisRhythmProcessor::scanSampleFolders()
@@ -204,6 +238,7 @@ void ExtasisRhythmProcessor::scanSampleFolders()
     {
         samplesFolder.findChildFiles (drumFolders, juce::File::findDirectories, false);
         drumFolders.sort();
+        loadAnalysisCache();
     }
 }
 
@@ -369,6 +404,11 @@ void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
     
     updateLicenseStatus();
     demoSamplesElapsed.store (0);
+    
+    pumpEnvelope = 0.0f;
+    pcmHoldL = 0.0f;
+    pcmHoldR = 0.0f;
+    pcmPhase = 0.0f;
 
     for (int i = 0; i < 12; ++i) {
         lastSubStep[i] = -1; 
@@ -381,6 +421,7 @@ void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
         panSmoother[i].reset(sr, 0.01);
         pitchSmoother[i].reset(sr, 0.01);
         cutSmoother[i].reset(sr, 0.01);
+        muteSmoother[i].reset(sr, 0.005);
     }
 
     initializeParameterPointers();
@@ -469,6 +510,20 @@ void ExtasisRhythmProcessor::loadSampleForChannel(int ch, int folderIndex, const
             reader->read(&tempBuffer, 0, numSamps, 0, true, true);
             delete reader;
             
+            float maxPeak = 0.0f;
+            for (int c = 0; c < tempBuffer.getNumChannels(); ++c) {
+                float channelPeak = tempBuffer.getMagnitude(c, 0, numSamps);
+                if (channelPeak > maxPeak) maxPeak = channelPeak;
+            }
+            
+            if (maxPeak > 0.0001f) {
+                float targetLevel = 0.707f; 
+                float gainMultiplier = targetLevel / maxPeak;
+                for (int c = 0; c < tempBuffer.getNumChannels(); ++c) {
+                    tempBuffer.applyGain(c, 0, numSamps, gainMultiplier);
+                }
+            }
+            
             auto newBuf = new SampleBuffer(std::move(tempBuffer), fileSr > 0.0 ? fileSr : 44100.0);
             {
                 juce::SpinLock::ScopedLockType sl(pointerLock);
@@ -484,140 +539,109 @@ void ExtasisRhythmProcessor::loadSmartSampleForChannel(int i, int kit) {
     juce::File kitDir = drumFolders[kit];
     juce::Array<juce::File> allFiles;
     kitDir.findChildFiles(allFiles, juce::File::findFiles, false);
-    juce::StringArray allVariants = getVariantsForChannel(kit, i);
+    
+    juce::StringArray allVariants;
+    for (auto& f : allFiles) {
+        if (f.getFileExtension().toLowerCase() == ".wav") 
+            allVariants.add(f.getFileName());
+    }
     if (allVariants.isEmpty()) return;
 
-    juce::StringArray matchedVars;
-    juce::StringArray fuzzyMatchedVars;
+    int bestScore = -1;
+    juce::StringArray candidates;
 
     for (auto& var : allVariants) {
         juce::String nameLower = var.toLowerCase();
-        juce::StringArray fileTokens; fileTokens.addTokens(nameLower, "_-. ", "");
         
-        bool exactMatch = false;
-        bool fuzzyMatch = false;
+        // --- BUG DEL CYMBAL ARREGLADO: TOKENIZACIÓN ---
+        juce::StringArray fileTokens;
+        fileTokens.addTokens(nameLower, "_-. 0123456789()[]", "");
+        
+        int currentScore = 0;
 
         for (auto& tok : channelTags[i]) {
             if (fileTokens.contains(tok)) {
-                exactMatch = true;
-                break;
-            }
-            for (auto& fTok : fileTokens) {
-                if (std::abs(fTok.length() - tok.length()) <= 2) {
-                    int dist = levenshteinDistance(fTok, tok);
-                    if (dist <= 1 || (tok.length() > 4 && dist <= 2)) {
-                        fuzzyMatch = true;
-                    }
-                }
+                currentScore += 10; // Exact match pesa muchísimo (ej. "bd" = "bd")
+            } else if (tok.length() >= 3 && nameLower.contains(tok)) {
+                currentScore += 5; // Substring match solo si la etiqueta es larga (ej. "kick" dentro de "deepkick")
             }
         }
-        
-        if (exactMatch) {
-            matchedVars.add(var);
-        } else if (fuzzyMatch) {
-            fuzzyMatchedVars.add(var);
+
+        if (currentScore > bestScore) {
+            bestScore = currentScore;
+            candidates.clear();
+            candidates.add(var);
+        } else if (currentScore == bestScore && currentScore > 0) {
+            candidates.add(var);
         }
     }
 
-    if (!matchedVars.isEmpty()) {
-        int rIdx = juce::Random::getSystemRandom().nextInt(matchedVars.size());
-        loadSampleForChannel(i, kit, matchedVars[rIdx]);
-    } else if (!fuzzyMatchedVars.isEmpty()) {
-        int rIdx = juce::Random::getSystemRandom().nextInt(fuzzyMatchedVars.size());
-        loadSampleForChannel(i, kit, fuzzyMatchedVars[rIdx]);
+    if (bestScore > 0 && !candidates.isEmpty()) {
+        int rIdx = juce::Random::getSystemRandom().nextInt(candidates.size());
+        loadSampleForChannel(i, kit, candidates[rIdx]);
+        return; 
+    }
+
+    juce::StringArray dspCandidates;
+    bool cacheUpdated = false;
+
+    if (analysisCacheObj == nullptr) loadAnalysisCache();
+
+    for (auto& var : allVariants) {
+        juce::File f = kitDir.getChildFile(var);
+        juce::String cacheKey = kitDir.getFileName() + "/" + var;
+        int guessedChan = -1;
+
+        if (analysisCacheObj->hasProperty(cacheKey)) {
+            guessedChan = (int)analysisCacheObj->getProperty(cacheKey);
+        } else {
+            guessedChan = analyzeAudioFile(f);
+            analysisCacheObj->setProperty(cacheKey, guessedChan);
+            cacheUpdated = true;
+        }
+
+        if (guessedChan == i) {
+            dspCandidates.add(var);
+        }
+    }
+
+    if (cacheUpdated) {
+        saveAnalysisCache();
+    }
+
+    if (!dspCandidates.isEmpty()) {
+        int rIdx = juce::Random::getSystemRandom().nextInt(dspCandidates.size());
+        loadSampleForChannel(i, kit, dspCandidates[rIdx]);
     } else {
-        bool dspFound = false;
-        int maxAttempts = juce::jmin(20, allVariants.size());
-        juce::Array<int> checkedIndices;
-        
-        for (int attempts = 0; attempts < maxAttempts; ++attempts) {
-            int rIdx = juce::Random::getSystemRandom().nextInt(allVariants.size());
-            if (checkedIndices.contains(rIdx)) continue;
-            checkedIndices.add(rIdx);
-            
-            juce::File f = kitDir.getChildFile(allVariants[rIdx]);
-            int guessedChan = analyzeAudioFile(f);
-            
-            if (guessedChan == i) {
-                loadSampleForChannel(i, kit, allVariants[rIdx]);
-                dspFound = true;
-                break;
-            }
-        }
-        
-        if (!dspFound) {
-            int rIdx = juce::Random::getSystemRandom().nextInt(allVariants.size());
-            loadSampleForChannel(i, kit, allVariants[rIdx]);
-        }
+        int rIdx = juce::Random::getSystemRandom().nextInt(allVariants.size());
+        loadSampleForChannel(i, kit, allVariants[rIdx]);
     }
 }
 
 void ExtasisRhythmProcessor::loadGlobalDrumKit(int kit) {
-    for (int i = 0; i < 12; ++i) loadSmartSampleForChannel(i, kit);
+    for (int i = 0; i < 12; ++i) {
+        loadSmartSampleForChannel(i, kit);
+        // --- BUG DE UI DESINCRONIZADA ARREGLADO ---
+        // Le avisamos al UI que cambiamos la carpeta fuente (Kit) de este canal
+        if (auto* param = apvts.getParameter("sampleSource_" + juce::String(i))) {
+            param->beginChangeGesture();
+            param->setValueNotifyingHost(param->convertTo0to1((float)kit));
+            param->endChangeGesture();
+        }
+    }
 }
 
 void ExtasisRhythmProcessor::randomizeKit() {
     if (drumFolders.isEmpty()) return;
 
-    juce::StringArray kickTokens, snareTokens;
-    kickTokens.addTokens("bd kik kick kck bombo sub bassdrum bassd kickdrum drum_kik", " ", "");
-    snareTokens.addTokens("sd sn snare tarola caja rim snar s snaredrum drum_snr", " ", "");
-
     for (int i = 0; i < 12; ++i) {
-        for (int attempts = 0; attempts < 10; ++attempts) {
-            int randomFolderIdx = juce::Random::getSystemRandom().nextInt(drumFolders.size());
-            juce::StringArray variants = getVariantsForChannel(randomFolderIdx, i);
-            if (variants.isEmpty()) continue;
+        int randomFolderIdx = juce::Random::getSystemRandom().nextInt(drumFolders.size());
+        loadSmartSampleForChannel(i, randomFolderIdx);
 
-            juce::String chosenSample;
-
-            if (i == 0) {
-                juce::StringArray matchKicks;
-                for (auto& var : variants) {
-                    juce::String nameLower = var.toLowerCase();
-                    juce::StringArray fileTokens; fileTokens.addTokens(nameLower, "_-. ", "");
-                    bool matched = false;
-                    for (auto& tok : kickTokens) { if (fileTokens.contains(tok)) { matched = true; break; } }
-                    if (matched) matchKicks.add(var);
-                }
-                if (!matchKicks.isEmpty()) {
-                    int rIdx = juce::Random::getSystemRandom().nextInt(matchKicks.size());
-                    chosenSample = matchKicks[rIdx];
-                } else if (attempts == 9) { 
-                    int rIdx = juce::Random::getSystemRandom().nextInt(variants.size());
-                    chosenSample = variants[rIdx];
-                }
-            } else if (i == 1) {
-                juce::StringArray matchSnares;
-                for (auto& var : variants) {
-                    juce::String nameLower = var.toLowerCase();
-                    juce::StringArray fileTokens; fileTokens.addTokens(nameLower, "_-. ", "");
-                    bool matched = false;
-                    for (auto& tok : snareTokens) { if (fileTokens.contains(tok)) { matched = true; break; } }
-                    if (matched) matchSnares.add(var);
-                }
-                if (!matchSnares.isEmpty()) {
-                    int rIdx = juce::Random::getSystemRandom().nextInt(matchSnares.size());
-                    chosenSample = matchSnares[rIdx];
-                } else if (attempts == 9) { 
-                    int rIdx = juce::Random::getSystemRandom().nextInt(variants.size());
-                    chosenSample = variants[rIdx];
-                }
-            } else {
-                int rIdx = juce::Random::getSystemRandom().nextInt(variants.size());
-                chosenSample = variants[rIdx];
-            }
-
-            if (chosenSample.isNotEmpty()) {
-                loadSampleForChannel(i, randomFolderIdx, chosenSample);
-                
-                if (auto* param = apvts.getParameter("sampleSource_" + juce::String(i))) {
-                    param->beginChangeGesture();
-                    param->setValueNotifyingHost(param->convertTo0to1((float)randomFolderIdx));
-                    param->endChangeGesture();
-                }
-                break; 
-            }
+        if (auto* param = apvts.getParameter("sampleSource_" + juce::String(i))) {
+            param->beginChangeGesture();
+            param->setValueNotifyingHost(param->convertTo0to1((float)randomFolderIdx));
+            param->endChangeGesture();
         }
     }
 }
@@ -635,6 +659,7 @@ void ExtasisRhythmProcessor::triggerChannel(int ch, float vel) {
 }
 
 void ExtasisRhythmProcessor::killAllAudio() {
+    pumpEnvelope = 0.0f;
     for (int i = 0; i < 12; ++i) {
         samplePositions[i] = -1.0;
         samplePositionsOld[i] = -1.0;
@@ -671,7 +696,7 @@ void ExtasisRhythmProcessor::resetAllParameters() {
 
     for (int i = 0; i < 12; ++i) {
         juce::String ch = juce::String(i);
-        setParam ("gain" + ch, 0.85f); setParam ("pan" + ch, 0.0f); setParam ("pitch" + ch, 0.0f); setParam ("tone" + ch, 7600.0f);
+        setParam ("gain" + ch, 0.85f); setParam ("pan" + ch, 0.0f); setParam ("pitch" + ch, 0.0f); setParam ("tone" + ch, 0.0f);
         setParam ("attack" + ch, 0.0005f); setParam ("decay" + ch, 0.40f); setParam ("springSend" + ch, 0.0f); setParam ("delaySend" + ch, 0.0f);
         setParam ("mute" + ch, 0.0f); setParam ("solo" + ch, 0.0f); setParam ("envChan_" + ch, 0.0f); setParam ("triplet" + ch, 0.0f); setParam ("fit" + ch, 0.0f); setParam ("length" + ch, 16.0f);
     }
@@ -766,6 +791,14 @@ void ExtasisRhythmProcessor::copyToNextPattern() {
     }
 
     changePattern (nextPattern);
+}
+
+void ExtasisRhythmProcessor::saveCustomPreset(const juce::File& file) {
+    juce::MemoryBlock mb; getStateInformation(mb); file.replaceWithData(mb.getData(), mb.getSize());
+}
+
+void ExtasisRhythmProcessor::loadCustomPreset(const juce::File& file) {
+    juce::MemoryBlock mb; if (file.loadFileAsData(mb)) setStateInformation(mb.getData(), (int)mb.getSize());
 }
 
 void ExtasisRhythmProcessor::getStateInformation (juce::MemoryBlock& destData) {
@@ -908,14 +941,6 @@ void ExtasisRhythmProcessor::setStateInformation (const void* data, int sizeInBy
     }
 }
 
-void ExtasisRhythmProcessor::saveCustomPreset(const juce::File& file) {
-    juce::MemoryBlock mb; getStateInformation(mb); file.replaceWithData(mb.getData(), mb.getSize());
-}
-
-void ExtasisRhythmProcessor::loadCustomPreset(const juce::File& file) {
-    juce::MemoryBlock mb; if (file.loadFileAsData(mb)) setStateInformation(mb.getData(), (int)mb.getSize());
-}
-
 void ExtasisRhythmProcessor::updateLicenseStatus()
 {
     isLicensedCached.store (LicenseManager::isLicensed());
@@ -940,32 +965,47 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     }
 
     buffer.clear(); 
-    if (getSampleRate() <= 0.0) return;
+    if (getSampleRate() <= 0.0 || buffer.getNumChannels() == 0) return;
 
     if (!isLicensedCached.load()) {
         int64_t currentElapsed = demoSamplesElapsed.load();
         int64_t maxDemoSamples = (int64_t)(getSampleRate() * 600.0); 
         if (currentElapsed >= maxDemoSamples) {
             demoExpired.store (true);
+            buffer.clear(); // MUTE THE AUDIO
             return;
         } else {
             demoSamplesElapsed.store (currentElapsed + buffer.getNumSamples());
         }
     }
     
-    juce::AudioBuffer<float> stemBuses[12];
-    bool stemBusEnabled[12] = { false };
-    int totalOutputBuses = getBusCount (false);
+    float* stemWriteL[12] = { nullptr };
+    float* stemWriteR[12] = { nullptr };
+    bool stemEnabled[12] = { false };
+    
+    int totalBufferChannels = buffer.getNumChannels();
+    float* masterL = totalBufferChannels > 0 ? buffer.getWritePointer(0) : nullptr;
+    float* masterR = totalBufferChannels > 1 ? buffer.getWritePointer(1) : masterL;
+    
+    int totalOutputBuses = getBusCount(false);
     for (int b = 0; b < 12; ++b) {
-        if ((b + 1) < totalOutputBuses) {
-            auto* bus = getBus (false, b + 1);
-            if (bus != nullptr && bus->isEnabled()) {
-                stemBuses[b] = getBusBuffer (buffer, false, b + 1);
-                stemBusEnabled[b] = (stemBuses[b].getNumChannels() > 0);
+        int busIdx = b + 1;
+        if (busIdx < totalOutputBuses) {
+            if (auto* bus = getBus(false, busIdx)) {
+                if (bus->isEnabled()) {
+                    int chOffset = bus->getChannelIndexInProcessBlockBuffer(false);
+                    int numChans = bus->getNumberOfChannels();
+                    
+                    if (chOffset >= 0 && (chOffset + numChans) <= totalBufferChannels) {
+                        stemEnabled[b] = true;
+                        if (numChans > 0) stemWriteL[b] = buffer.getWritePointer(chOffset);
+                        if (numChans > 1) stemWriteR[b] = buffer.getWritePointer(chOffset + 1);
+                        else stemWriteR[b] = stemWriteL[b];
+                    }
+                }
             }
         }
     }
-    auto masterBus = getBusBuffer (buffer, false, 0);
     
     for (int i = 0; i < 12; ++i) { int c = flashCounters[i].load(); if (c > 0) flashCounters[i] = c - 1; }
     
@@ -1011,7 +1051,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     kickLpfL.setCutoffFrequency(lpfFreq); kickLpfL.setResonance(lpfRes); kickLpfR.setCutoffFrequency(lpfFreq); kickLpfR.setResonance(lpfRes);
     otherLpfL.setCutoffFrequency(lpfFreq); otherLpfL.setResonance(lpfRes); otherLpfR.setCutoffFrequency(lpfFreq); otherLpfR.setResonance(lpfRes);
 
-    float pcmBits = cachedParams.pcmBits->load(); float pcmRateVal = cachedParams.pcmRate->load(); float pcmClockRatio = pcmRateVal / 25.0f;
+    float pcmBits = cachedParams.pcmBits->load(); float pcmRateVal = cachedParams.pcmRate->load();
     
     bool masterAnalog = cachedParams.masterAnalog->load() > 0.5f;
     bool masterVinyl = cachedParams.masterVinyl->load() > 0.5f;
@@ -1065,8 +1105,6 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         volSmoother[i].setTargetValue(cachedParams.chanGain[i]->load());
         panSmoother[i].setTargetValue(cachedParams.chanPan[i]->load());
         pitchSmoother[i].setTargetValue(cachedParams.chanPitch[i]->load() + channelStepSemitones[i].load());
-        
-        double srRatio = localSamples[i]->sampleRate / getSampleRate();
 
         chanSSend[i] = cachedParams.chanSSend[i]->load(); chanDSend[i] = cachedParams.chanDSend[i]->load();
         chanAtt[i] = cachedParams.chanAttack[i]->load(); chanDec[i] = cachedParams.chanDecay[i]->load();
@@ -1075,7 +1113,20 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         chanTriplet[i] = cachedParams.chanTriplet[i]->load() > 0.5f;
         chanFit[i] = cachedParams.chanFit[i]->load() > 0.5f;
         if (chanSolo[i]) anySolo = true;
-        channelToneFilters[i].setCutoffFrequency(cachedParams.chanTone[i]->load());
+        
+        float toneVal = cachedParams.chanTone[i]->load();
+        if (toneVal < 0.0f) {
+            float cutoff = 20000.0f * std::pow(20.0f / 20000.0f, -toneVal);
+            channelToneFilters[i].setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+            channelToneFilters[i].setCutoffFrequency(juce::jlimit(20.0f, 20000.0f, cutoff));
+        } else if (toneVal > 0.0f) {
+            float cutoff = 20.0f * std::pow(20000.0f / 20.0f, toneVal);
+            channelToneFilters[i].setType(juce::dsp::StateVariableTPTFilterType::highpass);
+            channelToneFilters[i].setCutoffFrequency(juce::jlimit(20.0f, 20000.0f, cutoff));
+        }
+        
+        bool isMuted = chanMute[i] || (anySolo && !chanSolo[i]);
+        muteSmoother[i].setTargetValue(isMuted ? 0.0f : 1.0f);
         
         envFilterL[i].setCutoffFrequency(envCut); envFilterL[i].setResonance(envRes);
         envFilterR[i].setCutoffFrequency(envCut); envFilterR[i].setResonance(envRes);
@@ -1104,14 +1155,25 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         return c0 + frac * (c1 + frac * (c2 + frac * c3));
     };
 
+    auto readInterp = [](const std::vector<float>& buf, float exactPos, int size) -> float {
+        while (exactPos < 0.0f) exactPos += (float)size;
+        while (exactPos >= (float)size) exactPos -= (float)size;
+        int i1 = (int)exactPos;
+        int i2 = (i1 + 1) % size;
+        float frac = exactPos - (float)i1;
+        return buf[(size_t)i1] + frac * (buf[(size_t)i2] - buf[(size_t)i1]);
+    };
+
     for (int s = 0; s < buffer.getNumSamples(); ++s) {
         smoothedDelayTime = smoothedDelayTime * 0.995f + targetDelSamples * 0.005f;
 
+        float currentMuteGain[12];
         for (int i = 0; i < 12; ++i) {
             chanVol[i] = volSmoother[i].getNextValue();
             chanPan[i] = panSmoother[i].getNextValue();
+            currentMuteGain[i] = muteSmoother[i].getNextValue();
             float semitones = pitchSmoother[i].getNextValue();
-            chanPitch[i] = (float)std::pow(2.0, (double)semitones / 12.0) * ((localSamples[i] && localSamples[i]->sampleRate > 0) ? (localSamples[i]->sampleRate / getSampleRate()) : 1.0);
+            chanPitch[i] = (float)(std::pow(2.0, (double)semitones / 12.0) * ((localSamples[i] && localSamples[i]->sampleRate > 0) ? (localSamples[i]->sampleRate / getSampleRate()) : 1.0));
         }
 
         double beatIncPerSample = (bpm / 60.0) / getSampleRate();
@@ -1121,8 +1183,6 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         if (playing) {
             bool fillTriplet = (cachedParams.tripletFill != nullptr && cachedParams.tripletFill->load() > 0.5f);
             bool fillFit = (cachedParams.fillFit != nullptr && cachedParams.fillFit->load() > 0.5f);
-            
-            // Blindaje seguro para la longitud del fill
             int numFillSteps = 16;
             if (cachedParams.fillLength != nullptr) {
                 numFillSteps = juce::jlimit(1, 16, (int)cachedParams.fillLength->load());
@@ -1130,51 +1190,44 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             
             double fillMult = fillFit ? ((double)numFillSteps / 4.0) : (fillTriplet ? 3.0 : 4.0);
             double fillSubStepD = exactBeats * fillMult; 
-            int fillSubStep = (int)fillSubStepD;
+            int fillSubStep = (int)std::floor(fillSubStepD); 
             
             if (fillSubStep != lastFillSubStep) {
                 lastFillSubStep = fillSubStep;
                 int mappedFillStep = 0;
                 int fMode = fillSeqMode.load();
+                
+                int phaseFill = fillSubStep % numFillSteps;
+                if (phaseFill < 0) phaseFill += numFillSteps;
 
                 if (numFillSteps <= 1) mappedFillStep = 0;
-                else if (fMode == 1) mappedFillStep = (numFillSteps - 1) - (fillSubStep % numFillSteps);
+                else if (fMode == 1) mappedFillStep = (numFillSteps - 1) - phaseFill;
                 else if (fMode == 2) mappedFillStep = random.nextInt(numFillSteps);
                 else if (fMode == 3) { 
                     int cycleLen = (numFillSteps - 1) * 2;
-                    if (cycleLen > 0) {
-                        int phase = fillSubStep % cycleLen;
-                        mappedFillStep = (phase < numFillSteps) ? phase : cycleLen - phase;
-                    } else mappedFillStep = 0;
-                } else mappedFillStep = fillSubStep % numFillSteps;
+                    int p2 = fillSubStep % cycleLen;
+                    if (p2 < 0) p2 += cycleLen;
+                    mappedFillStep = (p2 < numFillSteps) ? p2 : cycleLen - p2;
+                } else mappedFillStep = phaseFill;
                 
-                if (mappedFillStep < 0) mappedFillStep += numFillSteps;
-                
-                // Asegurar estricto rango de 0 a 15
                 fillSeqPos = juce::jlimit(0, 15, mappedFillStep);
             }
 
             int safeFillIndex = juce::jlimit(0, 15, fillSeqPos);
-            
-            // --- BLINDAJE DE PUNTERO NULO PARA EVITAR CRASH EN ABLETON ---
             int currentFillV = 0;
             if (cachedParams.fillStepParams[safeFillIndex] != nullptr) {
                 currentFillV = (int)(cachedParams.fillStepParams[safeFillIndex]->load() + 0.5f);
             }
-            // -------------------------------------------------------------
             
             int ratchets = (currentFillV == 1) ? 2 : ((currentFillV == 2) ? 3 : 1);
 
             for (int ch = 0; ch < 12; ++ch) {
-                // Blindaje contra punteros de audio vacíos
-                if (localSamples[ch] == nullptr) continue;
-                
                 int maxLen = (int) (cachedParams.lengthParams[ch] != nullptr ? cachedParams.lengthParams[ch]->load() : 16.0f);
                 int numSteps = chanFit[ch] ? juce::jlimit(1, 32, maxLen > 0 ? maxLen : 16) : (chanTriplet[ch] ? juce::jlimit(1, 24, maxLen > 0 ? maxLen : 12) : juce::jlimit(1, 32, maxLen > 0 ? maxLen : 16));
 
                 double mult = chanFit[ch] ? ((double)numSteps / 4.0) : (chanTriplet[ch] ? 3.0 : 4.0);
                 double chSubStepD = exactBeats * mult;
-                int chSubStep = (int)chSubStepD;
+                int chSubStep = (int)std::floor(chSubStepD); 
                 double stepFraction = chSubStepD - (double)chSubStep;
 
                 if (chSubStep != lastSubStep[ch]) {
@@ -1182,19 +1235,21 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
                     int mappedStep = 0;
                     int mode = seqModes[ch].load();
+                    
+                    int phase = chSubStep % numSteps;
+                    if (phase < 0) phase += numSteps;
+
                     if (numSteps <= 1) mappedStep = 0;
-                    else if (mode == 1) mappedStep = (numSteps - 1) - (chSubStep % numSteps);
+                    else if (mode == 1) mappedStep = (numSteps - 1) - phase;
                     else if (mode == 2) mappedStep = random.nextInt (numSteps);
                     else if (mode == 3) { 
                         int cycleLen = (numSteps - 1) * 2;
-                        if (cycleLen > 0) {
-                            int phase = chSubStep % cycleLen;
-                            mappedStep = (phase < numSteps) ? phase : cycleLen - phase;
-                        } else mappedStep = 0;
-                    } else mappedStep = chSubStep % numSteps;
+                        int p2 = chSubStep % cycleLen;
+                        if (p2 < 0) p2 += cycleLen;
+                        mappedStep = (p2 < numSteps) ? p2 : cycleLen - p2;
+                    } else mappedStep = phase;
                     
-                    if (mappedStep < 0) mappedStep += numSteps;
-                    
+                    mappedStep = juce::jlimit(0, 31, mappedStep);
                     currentMappedStep[ch] = mappedStep;
                     channelSteps[ch] = mappedStep;
 
@@ -1221,10 +1276,13 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                         lastRatchetTick[ch] = absoluteRatchetTick;
                         
                         float stepVel = (stepV == 1 ? 0.4f : (stepV == 2 ? 0.7f : 1.0f));
-                        
                         if (ratchets > 1 && currentRatchetIdx > 0) stepVel *= 0.82f;
 
-                        triggerChannel (ch, stepVel);
+                        if (localSamples[ch] != nullptr) {
+                            triggerChannel (ch, stepVel);
+                        } else {
+                            flashCounters[ch] = 15;
+                        }
 
                         int baseNote = getMidiNoteForChannel (ch);
                         int targetNote = juce::jlimit (0, 127, baseNote + (int)channelStepSemitones[ch].load());
@@ -1246,6 +1304,8 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         float delaySendTotalL = 0.0f, delaySendTotalR = 0.0f;
 
         for (int i = 0; i < 12; ++i) {
+            if (localSamples[i] == nullptr) continue;
+
             float chOutL = 0.0f; float chOutR = 0.0f;
             float env = 1.0f;
 
@@ -1270,11 +1330,6 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                 float sL = getSampleHermite(i, pos, localSamples[i]->numSamples, 0);
                 float sR = localSamples[i]->numChannels > 1 ? getSampleHermite(i, pos, localSamples[i]->numSamples, 1) : sL;
 
-                if (chanMute[i] || (anySolo && !chanSolo[i])) {
-                    double nextPos = pos + chanPitch[i]; if (nextPos >= localSamples[i]->numSamples) samplePositions[i] = -1.0; else samplePositions[i] = nextPos;
-                    continue;
-                }
-
                 float timeInSec = (float)pos / (float)getSampleRate();
                 if (timeInSec < chanAtt[i]) env = timeInSec / juce::jmax(0.0001f, chanAtt[i]);
                 else env = std::exp (-(timeInSec - chanAtt[i]) / juce::jmax(0.01f, chanDec[i]));
@@ -1290,60 +1345,60 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             }
 
             if (chOutL != 0.0f || chOutR != 0.0f) {
-                chOutL = channelToneFilters[i].processSample(0, chOutL); 
-                chOutR = channelToneFilters[i].processSample(0, chOutR);
+                float toneVal = cachedParams.chanTone[i]->load();
+                if (toneVal != 0.0f) {
+                    chOutL = channelToneFilters[i].processSample(0, chOutL); 
+                    chOutR = channelToneFilters[i].processSample(1, chOutR);
+                }
 
                 if (chanEnv[i]) {
-                    float dynCutoff = juce::jlimit(20.0f, 20000.0f, envCut * (0.2f + 0.8f * env));
+                    float dynCutoff = juce::jlimit(20.0f, 20000.0f, envCut * (0.05f + 0.95f * env));
+                    
                     envFilterL[i].setCutoffFrequency(dynCutoff);
                     envFilterR[i].setCutoffFrequency(dynCutoff);
+                    
                     chOutL = envFilterL[i].processSample(0, chOutL);
                     chOutR = envFilterR[i].processSample(0, chOutR);
                 }
 
-                float finalGain = 0.35f * chanVol[i] * channelVelocities[i].load();
-                float pannedL = chOutL * std::sqrt (0.5f * (1.0f - chanPan[i])) * finalGain; 
-                float pannedR = chOutR * std::sqrt (0.5f * (1.0f + chanPan[i])) * finalGain;
-                pannedL = fastTanh (pannedL * 1.5f); pannedR = fastTanh (pannedR * 1.5f);
+                float finalGain = 0.35f * chanVol[i] * channelVelocities[i].load() * currentMuteGain[i];
+                
+                if (finalGain > 0.00001f) {
+                    float pannedL = chOutL * std::sqrt (0.5f * (1.0f - chanPan[i])) * finalGain; 
+                    float pannedR = chOutR * std::sqrt (0.5f * (1.0f + chanPan[i])) * finalGain;
+                    pannedL = fastTanh (pannedL * 1.5f); pannedR = fastTanh (pannedR * 1.5f);
 
-                if (stemBusEnabled[i]) {
-                    int numStemChans = stemBuses[i].getNumChannels();
-                    if (numStemChans >= 2) {
-                        stemBuses[i].setSample (0, s, pannedL);
-                        stemBuses[i].setSample (1, s, pannedR);
-                    } else if (numStemChans == 1) {
-                        stemBuses[i].setSample (0, s, 0.5f * (pannedL + pannedR));
+                    if (i < 12 && stemEnabled[i]) {
+                        if (stemWriteL[i] != nullptr) stemWriteL[i][s] += (pannedL * 2.0f);
+                        if (stemWriteR[i] != nullptr) stemWriteR[i][s] += (pannedR * 2.0f);
                     }
-                }
 
-                if (i == 0) {
-                    kickL += pannedL; kickR += pannedR;
-                } else {
-                    otherL += pannedL; otherR += pannedR;
-                }
+                    if (i == 0) {
+                        kickL += pannedL; kickR += pannedR;
+                    } else {
+                        otherL += pannedL; otherR += pannedR;
+                    }
 
-                reverbSendTotalL += pannedL * chanSSend[i]; reverbSendTotalR += pannedR * chanSSend[i]; 
-                delaySendTotalL += pannedL * chanDSend[i]; delaySendTotalR += pannedR * chanDSend[i];
+                    reverbSendTotalL += pannedL * chanSSend[i]; reverbSendTotalR += pannedR * chanSSend[i]; 
+                    delaySendTotalL += pannedL * chanDSend[i]; delaySendTotalR += pannedR * chanDSend[i];
+                }
             }
         }
 
         auto processMasterBusChain = [&](float& l, float& r, bool isKick) {
-            if (pcmBits < 16.0f) { 
-                float steps = std::pow(2.0f, pcmBits); 
-                l = std::round(l * steps) / steps; 
-                r = std::round(r * steps) / steps; 
-            }
             if (isKick) {
                 l = kickHpfL.processSample(0, l); r = kickHpfR.processSample(0, r);
                 l = kickLpfL.processSample(0, l); r = kickLpfR.processSample(0, r);
                 float ratGainFactor = 1.0f + (std::pow(ratDist, 2.0f) * 100.0f);
-                l = fastTanh (l * ratGainFactor); r = fastTanh (r * ratGainFactor);
+                l = fastTanh(l * ratGainFactor + 0.1f) - 0.0996f; 
+                r = fastTanh(r * ratGainFactor + 0.1f) - 0.0996f;
                 l = kickRatLpfL.processSample(0, l) * ratVol; r = kickRatLpfR.processSample(0, r) * ratVol;
             } else {
                 l = otherHpfL.processSample(0, l); r = otherHpfR.processSample(0, r);
                 l = otherLpfL.processSample(0, l); r = otherLpfR.processSample(0, r);
                 float ratGainFactor = 1.0f + (std::pow(ratDist, 2.0f) * 100.0f);
-                l = fastTanh (l * ratGainFactor); r = fastTanh (r * ratGainFactor);
+                l = fastTanh(l * ratGainFactor + 0.1f) - 0.0996f; 
+                r = fastTanh(r * ratGainFactor + 0.1f) - 0.0996f;
                 l = otherRatLpfL.processSample(0, l) * ratVol; r = otherRatLpfR.processSample(0, r) * ratVol;
             }
         };
@@ -1354,13 +1409,13 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         if (flangerOn && !flangerBufferL.empty()) {
             flangerLfoPhase += (flangerRate / (float)getSampleRate()); if (flangerLfoPhase >= 1.0f) flangerLfoPhase -= 1.0f;
             float lfo = std::sin(2.0f * (float)juce::MathConstants<double>::pi * flangerLfoPhase);
-            int delaySamples = (int)((0.005f + 0.004f * (lfo + 1.0f)) * (float)getSampleRate());
+            float delaySamples = (0.005f + 0.004f * (lfo + 1.0f)) * (float)getSampleRate();
             
-            int readPosL = (flangerWritePos - delaySamples + (int)flangerBufferL.size()) % (int)flangerBufferL.size();
-            float delayedL = flangerBufferL[(size_t)readPosL]; flangerBufferL[(size_t)flangerWritePos] = otherL + delayedL * flangerFb;
+            float delayedL = readInterp(flangerBufferL, (float)flangerWritePos - delaySamples, (int)flangerBufferL.size());
+            float delayedR = readInterp(flangerBufferR, (float)flangerWritePos - delaySamples, (int)flangerBufferR.size());
 
-            int readPosR = (flangerWritePos - delaySamples + (int)flangerBufferR.size()) % (int)flangerBufferR.size();
-            float delayedR = flangerBufferR[(size_t)readPosR]; flangerBufferR[(size_t)flangerWritePos] = otherR + delayedR * flangerFb;
+            flangerBufferL[(size_t)flangerWritePos] = otherL + delayedL * flangerFb;
+            flangerBufferR[(size_t)flangerWritePos] = otherR + delayedR * flangerFb;
 
             flangerWritePos = (flangerWritePos + 1) % (int)flangerBufferL.size();
             otherL = 0.5f * (otherL + delayedL); otherR = 0.5f * (otherR + delayedR);
@@ -1380,17 +1435,9 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             float delSamplesR = (baseDelMs + maxModMs * lfoR) * (float)getSampleRate();
 
             int cBufSize = (int)chorusBufferL.size();
-            auto readChorusInterp = [](const std::vector<float>& buf, float exactPos, int size) -> float {
-                while (exactPos < 0.0f) exactPos += (float)size;
-                while (exactPos >= (float)size) exactPos -= (float)size;
-                int i1 = (int)exactPos;
-                int i2 = (i1 + 1) % size;
-                float frac = exactPos - (float)i1;
-                return buf[(size_t)i1] + frac * (buf[(size_t)i2] - buf[(size_t)i1]);
-            };
-
-            float cDelayedL = readChorusInterp(chorusBufferL, (float)chorusWritePos - delSamplesL, cBufSize);
-            float cDelayedR = readChorusInterp(chorusBufferR, (float)chorusWritePos - delSamplesR, cBufSize);
+            
+            float cDelayedL = readInterp(chorusBufferL, (float)chorusWritePos - delSamplesL, cBufSize);
+            float cDelayedR = readInterp(chorusBufferR, (float)chorusWritePos - delSamplesR, cBufSize);
 
             chorusBufferL[(size_t)chorusWritePos] = otherL;
             chorusBufferR[(size_t)chorusWritePos] = otherR;
@@ -1449,14 +1496,41 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             mixedL += dOutL; mixedR += dOutR;
         }
 
+        if (pcmBits < 16.0f || pcmRateVal < 100.0f) {
+            float stepSize = 100.0f / juce::jmax(1.0f, pcmRateVal); 
+            pcmPhase += 1.0f;
+            if (pcmPhase >= stepSize) {
+                pcmHoldL = mixedL;
+                pcmHoldR = mixedR;
+                pcmPhase -= stepSize;
+            } else {
+                mixedL = pcmHoldL;
+                mixedR = pcmHoldR;
+            }
+
+            if (pcmBits < 16.0f) { 
+                float steps = std::pow(2.0f, pcmBits); 
+                mixedL = std::round(mixedL * steps) / steps; 
+                mixedR = std::round(mixedR * steps) / steps; 
+            }
+        }
+
         mixedL *= (mVol * 1.4125f); mixedR *= (mVol * 1.4125f);
         mixedL = fastTanh (mixedL / mClip) * mClip; mixedR = fastTanh (mixedR / mClip) * mClip;
 
         if (pumpOn) {
-            float envFollower = juce::jmax(std::abs(mixedL), std::abs(mixedR));
+            float currentPeak = juce::jmax(std::abs(mixedL), std::abs(mixedR));
+            float attackCoef = 0.05f; 
+            float releaseCoef = 0.0003f;
+            if (currentPeak > pumpEnvelope) {
+                pumpEnvelope += attackCoef * (currentPeak - pumpEnvelope);
+            } else {
+                pumpEnvelope += releaseCoef * (currentPeak - pumpEnvelope);
+            }
+
             float thresholdLinear = juce::Decibels::decibelsToGain(pumpThr);
-            if (envFollower > thresholdLinear) {
-                float reduction = 1.0f - (pumpAmt * (1.0f - (thresholdLinear / juce::jmax(0.0001f, envFollower))));
+            if (pumpEnvelope > thresholdLinear) {
+                float reduction = 1.0f - (pumpAmt * (1.0f - (thresholdLinear / juce::jmax(0.0001f, pumpEnvelope))));
                 mixedL *= reduction; mixedR *= reduction;
             }
         }
@@ -1482,15 +1556,18 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             if (std::abs(mixedR) > ceiling) mixedR = (mixedR > 0.0f ? ceiling : -ceiling);
         }
 
-        masterBus.setSample (0, s, mixedL); 
-        if (masterBus.getNumChannels() > 1) 
-            masterBus.setSample (1, s, mixedR);
+        mixedL *= 2.0f;
+        mixedR *= 2.0f;
+
+        if (masterL != nullptr) masterL[s] = mixedL; 
+        if (masterR != nullptr) masterR[s] = mixedR;
     }
 
-    float curRmsL = buffer.getRMSLevel (0, 0, buffer.getNumSamples()); 
-    float curRmsR = buffer.getNumChannels() > 1 ? buffer.getRMSLevel (1, 0, buffer.getNumSamples()) : curRmsL;
-    outputLevelL = juce::jmax (curRmsL, outputLevelL.load() * 0.8f); 
-    outputLevelR = juce::jmax (curRmsR, outputLevelR.load() * 0.8f);
+    float curPeakL = buffer.getMagnitude (0, 0, buffer.getNumSamples()); 
+    float curPeakR = buffer.getNumChannels() > 1 ? buffer.getMagnitude (1, 0, buffer.getNumSamples()) : curPeakL;
+    
+    outputLevelL = juce::jmax (curPeakL, outputLevelL.load() * 0.92f); 
+    outputLevelR = juce::jmax (curPeakR, outputLevelR.load() * 0.92f);
 
     auto endTime = juce::Time::getHighResolutionTicks();
     double elapsedSeconds = juce::Time::highResolutionTicksToSeconds(endTime - startTime);
@@ -1582,31 +1659,83 @@ int ExtasisRhythmProcessor::analyzeAudioFile(const juce::File& file) {
     std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(file));
     if (!reader) return -1;
     
-    int numSamples = juce::jmin((int)reader->lengthInSamples, 8192); 
-    if (numSamples < 100) return -1;
-
-    juce::AudioBuffer<float> buffer(1, numSamples);
-    reader->read(&buffer, 0, numSamples, 0, true, false);
+    const int fftOrder = 11;
+    const int fftSize = 1 << fftOrder; 
     
+    juce::AudioBuffer<float> buffer(1, fftSize);
+    buffer.clear();
+    int numToRead = juce::jmin((int)reader->lengthInSamples, fftSize);
+    
+    if (numToRead < 256) return -1; 
+    
+    reader->read(&buffer, 0, numToRead, 0, true, false);
     const float* data = buffer.getReadPointer(0);
-    int zeroCrossings = 0;
-    float energy = 0.0f;
-    float peak = 0.0f;
     
-    for (int i = 1; i < numSamples; ++i) {
-        energy += data[i] * data[i];
+    float peak = 0.0f;
+    int zeroCrossings = 0;
+    
+    for (int i = 0; i < numToRead; ++i) {
         if (std::abs(data[i]) > peak) peak = std::abs(data[i]);
-        if ((data[i] >= 0.0f && data[i-1] < 0.0f) || (data[i] < 0.0f && data[i-1] >= 0.0f)) {
+    }
+    
+    if (peak < 0.01f) return -1; 
+    
+    float threshold = peak * 0.05f; 
+    
+    for (int i = 1; i < numToRead; ++i) {
+        if ((data[i] > threshold && data[i-1] < -threshold) || 
+            (data[i] < -threshold && data[i-1] > threshold)) {
             zeroCrossings++;
         }
     }
     
-    float zcrRate = (float)zeroCrossings / (float)numSamples; 
+    float zcrRate = (float)zeroCrossings / (float)numToRead;
     
-    if (zcrRate < 0.04f && peak > 0.4f) return 0; 
-    if (zcrRate > 0.25f) return 2; 
-    if (zcrRate > 0.10f && zcrRate <= 0.25f && peak > 0.5f) return 1; 
-    if (zcrRate >= 0.04f && zcrRate <= 0.10f) return 7; 
+    juce::dsp::FFT fft(fftOrder);
+    std::vector<float> fftData(fftSize * 2, 0.0f);
+    
+    juce::dsp::WindowingFunction<float> window(fftSize, juce::dsp::WindowingFunction<float>::hann);
+    std::vector<float> windowedData(fftSize, 0.0f);
+    for(int i = 0; i < numToRead; ++i) windowedData[i] = data[i];
+    window.multiplyWithWindowingTable(windowedData.data(), fftSize);
+    
+    for (int i = 0; i < fftSize; ++i) fftData[i] = windowedData[i];
+    
+    fft.performFrequencyOnlyForwardTransform(fftData.data());
+    
+    float sumMagnitudes = 0.0f;
+    float sumWeightedFrequencies = 0.0f;
+    float sampleRate = reader->sampleRate > 0 ? reader->sampleRate : 44100.0f;
+    
+    int numBins = fftSize / 2;
+    for (int i = 0; i < numBins; ++i) {
+        float freq = ((float)i / (float)fftSize) * sampleRate;
+        float mag = fftData[i];
+        sumMagnitudes += mag;
+        sumWeightedFrequencies += mag * freq;
+    }
+    
+    float spectralCentroid = (sumMagnitudes > 0.0f) ? (sumWeightedFrequencies / sumMagnitudes) : 0.0f;
+    
+    if (spectralCentroid < 350.0f && zcrRate < 0.06f) {
+        return 0; 
+    }
+    
+    if (spectralCentroid >= 350.0f && spectralCentroid < 1200.0f) {
+        return 8; 
+    }
+    
+    if (spectralCentroid >= 1200.0f && spectralCentroid < 4500.0f) {
+        if (zcrRate > 0.18f) return 4; 
+        if (zcrRate < 0.08f) return 5; 
+        return 1; 
+    }
+    
+    if (spectralCentroid >= 4500.0f) {
+        if (zcrRate > 0.25f) return 2; 
+        if (reader->lengthInSamples > sampleRate * 0.8) return 10; 
+        return 3; 
+    }
     
     return -1; 
 }

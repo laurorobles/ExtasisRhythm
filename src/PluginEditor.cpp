@@ -59,6 +59,122 @@ public:
     }
 };
 
+class EffectKnobLookAndFeel : public juce::LookAndFeel_V4
+{
+public:
+    void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
+                           float rotaryStartAngle, float rotaryEndAngle, juce::Slider& slider) override
+    {
+        auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat().reduced (2.0f);
+        auto radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) / 2.0f - 2.0f;
+        auto center = bounds.getCentre();
+
+        juce::Colour knobCol = slider.findColour (juce::Slider::rotarySliderFillColourId);
+
+        g.setColour (knobCol);
+        g.fillEllipse (center.x - radius, center.y - radius, radius * 2.0f, radius * 2.0f);
+
+        g.setColour (juce::Colours::white.withAlpha(0.85f));
+        int numTicks = 9;
+        for (int i = 0; i < numTicks; ++i)
+        {
+            float fraction = (float)i / (float)(numTicks - 1);
+            float tickAngle = rotaryStartAngle + fraction * (rotaryEndAngle - rotaryStartAngle);
+            float outerR = radius - 1.0f;
+            float innerR = radius - 4.0f;
+            float x1 = center.x + innerR * std::sin (tickAngle);
+            float y1 = center.y - innerR * std::cos (tickAngle);
+            float x2 = center.x + outerR * std::sin (tickAngle);
+            float y2 = center.y - outerR * std::cos (tickAngle);
+            g.drawLine (x1, y1, x2, y2, 1.1f);
+        }
+
+        auto skirtRadius = radius - 4.0f;
+        g.setColour (juce::Colour (0xff222222));
+        g.fillEllipse (center.x - skirtRadius, center.y - skirtRadius, skirtRadius * 2.0f, skirtRadius * 2.0f);
+
+        auto capRadius = skirtRadius * 0.82f;
+        g.setColour (juce::Colour (0xffd0d0d0));
+        g.fillEllipse (center.x - capRadius, center.y - capRadius, capRadius * 2.0f, capRadius * 2.0f);
+        g.setColour (juce::Colour (0xff222222));
+        g.drawEllipse (center.x - capRadius, center.y - capRadius, capRadius * 2.0f, capRadius * 2.0f, 1.0f);
+
+        auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
+        juce::Path p;
+        
+        // Aguja extendida desde el centro hasta el anillo de color
+        p.addRoundedRectangle (-1.5f, -radius, 3.0f, radius + 2.0f, 1.0f);
+        p.applyTransform (juce::AffineTransform::rotation (angle).translated (center));
+
+        g.setColour (juce::Colours::white);
+        g.fillPath (p);
+        g.setColour (juce::Colours::black.withAlpha(0.6f));
+        g.strokePath (p, juce::PathStrokeType(1.0f));
+
+        // Punto central sutil para anclar la aguja visualmente
+        g.setColour (juce::Colour (0xff222222));
+        g.fillEllipse (center.x - 3.0f, center.y - 3.0f, 6.0f, 6.0f);
+    }
+};
+
+class MasterChannelKnobLookAndFeel : public juce::LookAndFeel_V4
+{
+public:
+    void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
+                           float rotaryStartAngle, float rotaryEndAngle, juce::Slider& slider) override
+    {
+        auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat().reduced (2.0f);
+        auto radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) / 2.0f - 2.0f;
+        auto center = bounds.getCentre();
+
+        juce::Colour knobCol = slider.findColour (juce::Slider::rotarySliderFillColourId);
+
+        g.setColour (knobCol);
+        g.fillEllipse (center.x - radius, center.y - radius, radius * 2.0f, radius * 2.0f);
+
+        g.setColour (juce::Colours::white.withAlpha(0.85f));
+        int numTicks = 9;
+        for (int i = 0; i < numTicks; ++i)
+        {
+            float fraction = (float)i / (float)(numTicks - 1);
+            float tickAngle = rotaryStartAngle + fraction * (rotaryEndAngle - rotaryStartAngle);
+            float outerR = radius - 1.0f;
+            float innerR = radius - 4.0f;
+            float x1 = center.x + innerR * std::sin (tickAngle);
+            float y1 = center.y - innerR * std::cos (tickAngle);
+            float x2 = center.x + outerR * std::sin (tickAngle);
+            float y2 = center.y - outerR * std::cos (tickAngle);
+            g.drawLine (x1, y1, x2, y2, 1.1f);
+        }
+
+        auto skirtRadius = radius - 4.0f;
+        g.setColour (juce::Colour (0xff222222));
+        g.fillEllipse (center.x - skirtRadius, center.y - skirtRadius, skirtRadius * 2.0f, skirtRadius * 2.0f);
+
+        auto capRadius = skirtRadius * 0.82f;
+        g.setColour (juce::Colour (0xffd0d0d0));
+        g.fillEllipse (center.x - capRadius, center.y - capRadius, capRadius * 2.0f, capRadius * 2.0f);
+        g.setColour (juce::Colour (0xff222222));
+        g.drawEllipse (center.x - capRadius, center.y - capRadius, capRadius * 2.0f, capRadius * 2.0f, 1.0f);
+
+        auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
+        juce::Path p;
+        
+        // Aguja extendida desde el centro hasta el anillo de color
+        p.addRoundedRectangle (-1.5f, -radius, 3.0f, radius + 2.0f, 1.0f);
+        p.applyTransform (juce::AffineTransform::rotation (angle).translated (center));
+
+        g.setColour (juce::Colours::white);
+        g.fillPath (p);
+        g.setColour (juce::Colours::black.withAlpha(0.6f));
+        g.strokePath (p, juce::PathStrokeType(1.0f));
+
+        // Punto central sutil para anclar la aguja visualmente
+        g.setColour (juce::Colour (0xff222222));
+        g.fillEllipse (center.x - 3.0f, center.y - 3.0f, 6.0f, 6.0f);
+    }
+};
+
 ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     : AudioProcessorEditor (&proc), audioProcessor (proc) 
 {
@@ -242,6 +358,11 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
         fillFitButton.setToggleState (false, juce::dontSendNotification);
         fillFitButton.setButtonText ("FIX");
         updateFillLengthLabel();
+        refreshAllStepButtons();
+        for (int s = 0; s < 16; ++s) {
+            updateFillButtonVisuals(s);
+        }
+        repaint();
         resized();
     }; 
 
@@ -250,6 +371,11 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
         fillFitButton.setToggleState (false, juce::dontSendNotification);
         fillFitButton.setButtonText ("FIX");
         updateFillLengthLabel();
+        refreshAllStepButtons();
+        for (int s = 0; s < 16; ++s) {
+            updateFillButtonVisuals(s);
+        }
+        repaint();
         resized();
     };
 
@@ -357,14 +483,29 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     randomKitButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff8e44ad)); 
     randomKitButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
     randomKitButton.onClick = [this] {
+        // 1. Ejecutamos la lógica de backend que carga los nuevos sonidos
         audioProcessor.randomizeKit();
-        int kitIdx = (int)audioProcessor.apvts.getRawParameterValue("globalKitChoice")->load();
+        
+        // 2. Actualizamos la UI canal por canal leyendo su nuevo estado
         for (int i = 0; i < 12; ++i) {
+            // Leer qué carpeta se le asignó a este canal específico
+            int chKitIdx = (int)audioProcessor.apvts.getRawParameterValue("sampleSource_" + juce::String(i))->load();
+            
+            // Actualizar el menú superior (Carpeta/Source)
+            sampleSourceSelectors[i].setSelectedId(chKitIdx + 1, juce::dontSendNotification);
+            
+            // Actualizar el menú inferior (Sample/Variant)
             sampleVariantSelectors[i].clear(juce::dontSendNotification);
-            auto variants = audioProcessor.getVariantsForChannel(kitIdx, i); 
+            auto variants = audioProcessor.getVariantsForChannel(chKitIdx, i); 
             sampleVariantSelectors[i].addItemList(variants, 1);
+            
             int matchIdx = variants.indexOf(audioProcessor.currentSampleName[i]); 
-            sampleVariantSelectors[i].setSelectedId(matchIdx >= 0 ? matchIdx + 1 : 1, juce::dontSendNotification);
+            if (matchIdx >= 0) {
+                sampleVariantSelectors[i].setSelectedId(matchIdx + 1, juce::dontSendNotification);
+            } else {
+                // Forzar el texto si por alguna razón no encuentra el ID exacto
+                sampleVariantSelectors[i].setText(audioProcessor.currentSampleName[i], juce::dontSendNotification);
+            }
         }
     };
 
@@ -1170,35 +1311,35 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
     g.setColour (juce::Colours::black.withAlpha (0.15f)); 
     g.fillRect (0, 180, 1192, 4); 
 
-    g.setFont (juce::FontOptions (25.0f, juce::Font::bold)); 
-    g.setColour (juce::Colours::black.withAlpha(0.18f)); 
-    g.drawText ("ExtasisRhythm", 17, 14, 180, 30, juce::Justification::left); 
+    // Título principal
+    g.setFont (juce::FontOptions (26.0f, juce::Font::bold)); 
+    g.setColour (juce::Colours::black.withAlpha(0.2f)); 
+    g.drawText ("ExtasisRhythm", 18, 16, 200, 30, juce::Justification::left); 
     g.setColour (juce::Colour (0xff00d2ff)); 
-    g.drawText ("ExtasisRhythm", 15, 12, 180, 30, juce::Justification::left);
+    g.drawText ("ExtasisRhythm", 16, 14, 200, 30, juce::Justification::left);
 
-    g.setFont (juce::FontOptions (10.0f, juce::Font::bold)); 
-    g.setColour (juce::Colour (0xff666666)); 
-    g.drawText ("v2.0", 200, 20, 35, 14, juce::Justification::left);
+    // Versión (Actualizado a v2.5)
+    g.setFont (juce::FontOptions (11.0f, juce::Font::bold)); 
+    g.setColour (juce::Colour (0xff777777)); 
+    g.drawText ("v2.5", 212, 26, 40, 14, juce::Justification::left);
     
-    g.setFont (juce::FontOptions (10.0f, juce::Font::bold)); 
-    g.setColour (juce::Colour (0xff333333)); 
-    g.drawText ("coded by @laurorobles", 16, 45, 180, 14, juce::Justification::left);
+    // Subtítulo
+    g.setFont (juce::FontOptions (10.5f, juce::Font::bold)); 
+    g.setColour (juce::Colour (0xff444444)); 
+    g.drawText ("coded by @laurorobles", 17, 46, 200, 14, juce::Justification::left);
 
+    // Logo (Redimensionado, alineado a la izquierda para un look más limpio)
     if (logoImage.isValid())
     {
-        auto logoRect = juce::Rectangle<float> (35.0f, 78.0f, 120.0f, 88.0f);
-        auto placement = juce::RectanglePlacement::centred | juce::RectanglePlacement::onlyReduceInSize;
+        auto logoRect = juce::Rectangle<float> (17.0f, 72.0f, 200.0f, 94.0f);
+        auto placement = juce::RectanglePlacement::xLeft | juce::RectanglePlacement::yMid | juce::RectanglePlacement::onlyReduceInSize;
 
-        // 1. Black drop shadow strictly in the background (offset by +2px)
-        g.setColour (juce::Colours::black.withAlpha (0.45f));
-        g.drawImage (logoImage, logoRect.translated (2.0f, 2.0f), placement, true);
+        g.setColour (juce::Colours::black.withAlpha (0.25f));
+        g.drawImage (logoImage, logoRect.translated (2.0f, 3.0f), placement, true);
 
-        // 2. Solid pure white backing mask directly under the logo
-        // (Prevents the black shadow or gray background from bleeding through semi-transparent logo pixels)
         g.setColour (juce::Colours::white);
         g.drawImage (logoImage, logoRect, placement, true);
 
-        // 3. 100% pure, bright, original color logo in the foreground
         g.drawImage (logoImage, logoRect, placement, false);
     }
 
