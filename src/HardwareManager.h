@@ -19,7 +19,7 @@ private:
     std::unique_ptr<juce::MidiOutput> launchpadOutput;
     std::vector<std::unique_ptr<juce::MidiInput>> openedInputs;
     
-    enum Mode { Sequencer = 0, Browser, FXRack };
+    enum Mode { Sequencer = 0, Browser, FXRack, Mixer };
     Mode currentMode = Sequencer;
     
     int sequencerPage = 0; // 0 = Ch 1-4, 1 = Ch 5-8
@@ -28,8 +28,12 @@ private:
     void processSequencer(const juce::MidiMessage& m);
     void processBrowser(const juce::MidiMessage& m);
     void processFXRack(const juce::MidiMessage& m);
+    void processMixer(const juce::MidiMessage& m);
     void processTopRow(int cc, int val);
     
     void sendColor(int note, int colorVel);
     void setButtonLED(int cc, int colorVel);
+    
+    std::function<void(int, int)> onColorSent; // For testing/emulation
+    std::function<void(int, int)> onButtonLEDSent;
 };

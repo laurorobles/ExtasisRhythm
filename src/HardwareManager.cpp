@@ -34,12 +34,14 @@ void HardwareManager::scanAndOpenDevices() {
 }
 
 void HardwareManager::sendColor(int note, int colorVel) {
+    if (onColorSent) onColorSent(note, colorVel);
     if (launchpadOutput) {
         launchpadOutput->sendMessageNow(juce::MidiMessage::noteOn(1, note, (juce::uint8)colorVel));
     }
 }
 
 void HardwareManager::setButtonLED(int cc, int colorVel) {
+    if (onButtonLEDSent) onButtonLEDSent(cc, colorVel);
     if (launchpadOutput) {
         launchpadOutput->sendMessageNow(juce::MidiMessage::controllerEvent(1, cc, (juce::uint8)colorVel));
     }
@@ -62,6 +64,7 @@ void HardwareManager::handleIncomingMidiMessage(juce::MidiInput* source, const j
         if (currentMode == Sequencer) processSequencer(message);
         else if (currentMode == Browser) processBrowser(message);
         else if (currentMode == FXRack) processFXRack(message);
+        else if (currentMode == Mixer) processMixer(message);
     } else if (message.isNoteOff() && currentMode == Browser) {
         // Release held channel
         int note = message.getNoteNumber();
@@ -104,6 +107,8 @@ void HardwareManager::processTopRow(int cc, int val) {
         currentMode = Browser;
     } else if (cc == 110) { // User 2
         currentMode = FXRack;
+    } else if (cc == 111) { // Mixer
+        currentMode = Mixer;
     }
 }
 
@@ -153,6 +158,25 @@ void HardwareManager::processFXRack(const juce::MidiMessage& m) {
     }
 }
 
+
+void HardwareManager::processMixer(const juce::MidiMessage& m) {
+    int note = m.getNoteNumber();
+    int row = note / 16;
+    int col = note % 16;
+    
+    if (col < 8) { // Grid
+        // 8 Columns = 8 Channels. 8 Rows = Volume 0 to 7 (Row 7 is bottom, Row 0 is top).
+        // Let's say Row 7 = 0%, Row 0 = 100%.
+        float vol = 1.0f - ((float)row / 7.0f);
+        if (auto* p = processor.getParam("gain" + juce::String(col))) *p = vol;
+    }
+    
+    if (row == 7 && col == 8) { // Bottom Right Round Button
+        // Toggle Play/Stop
+        if (auto* p = processor.getParam("isPlaying")) *p = (p->load() > 0.5f) ? 0.0f : 1.0f;
+    }
+}
+
 void HardwareManager::updateLEDs() {
     if (!launchpadOutput) return;
     
@@ -160,6 +184,7 @@ void HardwareManager::updateLEDs() {
     setButtonLED(108, currentMode == Sequencer ? 60 : 13);
     setButtonLED(109, currentMode == Browser ? 60 : 13);
     setButtonLED(110, currentMode == FXRack ? 60 : 13);
+    setButtonLED(111, currentMode == Mixer ? 60 : 13);
     setButtonLED(104, sequencerPage == 0 ? 60 : 13);
     setButtonLED(105, sequencerPage == 1 ? 60 : 13);
     
@@ -188,6 +213,15 @@ void HardwareManager::updateLEDs() {
             } else if (currentMode == FXRack) {
                 if (col == 0 && row < 3) {
                     color = fxState[row] ? 60 : 13;
+                }
+            }
+                        } else if (currentMode == Mixer) {
+                if (col < 8) {
+                    float vol = 0.0f;
+                    if (auto* p = processor.getParam("gain" + juce::String(col))) vol = p->load();
+                    int targetRow = 7 - (int)(vol * 7.0f);
+                    if (row == targetRow) color = 60; // Green dot for volume level
+                    else if (row > targetRow) color = 13; // Dim red below level
                 }
             }
             sendColor(note, color);

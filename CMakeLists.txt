@@ -62,7 +62,7 @@ target_compile_definitions(ExtasisRhythm PRIVATE
 target_link_libraries(ExtasisRhythm PRIVATE
     juce::juce_audio_utils
     juce::juce_dsp
-    PUBLIC juce::juce::juce_recommended_config_flags
+    PUBLIC juce::juce_recommended_config_flags
     PUBLIC juce::juce_recommended_lto_flags
     PUBLIC juce::juce_recommended_warning_flags
 )
@@ -108,3 +108,22 @@ if (APPLE)
         )
     endif()
 endif()
+
+# --- LAUNCHPAD EMULATOR ---
+juce_add_console_app(LaunchpadEmulator)
+target_sources(LaunchpadEmulator PRIVATE
+    test_launchpad.cpp
+    src/PluginProcessor.cpp
+    src/PluginProcessor.h
+    src/PluginEditor.cpp
+    src/PluginEditor.h
+    src/HardwareManager.cpp
+    src/HardwareManager.h
+    src/ChannelStripComponent.cpp
+    src/FXRackComponent.cpp
+    src/MasterSectionComponent.cpp
+    src/SequencerComponent.cpp
+)
+target_compile_definitions(LaunchpadEmulator PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+target_link_libraries(LaunchpadEmulator PRIVATE juce::juce_audio_utils juce::juce_dsp juce::juce_gui_extra juce::juce_opengl ExtasisRhythmData)
+juce_generate_juce_header(LaunchpadEmulator)
