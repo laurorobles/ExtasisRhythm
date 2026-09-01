@@ -43,16 +43,16 @@ jobs:
       shell: bash
       run: |
         mkdir -p ExtasisRhythm-Windows
-        cp -R build/ExtasisRhythm_artefacts/Release/VST3/ExtasisRhythm.vst3 ExtasisRhythm-Windows/
-        cp build/ExtasisRhythm_artefacts/Release/Standalone/ExtasisRhythm.exe ExtasisRhythm-Windows/ || true
+        find build -type d -name "ExtasisRhythm.vst3" -exec cp -R {} ExtasisRhythm-Windows/ \;
+        find build -type f -name "ExtasisRhythm.exe" -exec cp {} ExtasisRhythm-Windows/ \;
         powershell -Command "Compress-Archive -Path ExtasisRhythm-Windows -DestinationPath ExtasisRhythm-Windows.zip"
         
     - name: Package Linux
       if: runner.os == 'Linux'
       run: |
         mkdir -p ExtasisRhythm-Linux
-        cp -R build/ExtasisRhythm_artefacts/Release/VST3/ExtasisRhythm.vst3 ExtasisRhythm-Linux/
-        cp build/ExtasisRhythm_artefacts/Release/Standalone/ExtasisRhythm ExtasisRhythm-Linux/ || true
+        find build -type d -name "ExtasisRhythm.vst3" -exec cp -R {} ExtasisRhythm-Linux/ \;
+        find build -type f -executable -name "ExtasisRhythm" -exec cp {} ExtasisRhythm-Linux/ \;
         zip -r ExtasisRhythm-Linux.zip ExtasisRhythm-Linux/
 
     - name: Upload Artifact
