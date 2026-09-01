@@ -61,7 +61,7 @@ target_compile_definitions(ExtasisRhythm PRIVATE
 target_link_libraries(ExtasisRhythm PRIVATE
     juce::juce_audio_utils
     juce::juce_dsp
-    PUBLIC juce::juce::juce_recommended_config_flags
+    PUBLIC juce::juce_recommended_config_flags
     PUBLIC juce::juce_recommended_lto_flags
     PUBLIC juce::juce_recommended_warning_flags
 )
