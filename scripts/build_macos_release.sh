@@ -51,9 +51,10 @@ EXTASIS RHYTHM v3.0.7 — macOS Installation
 ⚠️ IMPORTANTE: SI MAC DICE QUE LA APP "ESTÁ DAÑADA" ⚠️
 Apple bloquea los plugins descargados de internet (Gatekeeper).
 Para solucionarlo en 1 segundo:
-1. Haz Click Derecho sobre el archivo "Fix_Mac_Error.command"
-2. Selecciona "Abrir" (Open)
-3. La terminal confirmará el desbloqueo. ¡Listo!
+1. Abre la aplicación "Terminal" en tu Mac.
+2. Arrastra el archivo "Fix_Mac_Error.command" hacia la ventana de la Terminal.
+3. Presiona Enter.
+4. La terminal confirmará el desbloqueo. ¡Listo!
 
 ------------------------------------------
 INSTALACIÓN NORMAL:

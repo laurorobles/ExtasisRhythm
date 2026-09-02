@@ -383,8 +383,9 @@ Este es un mecanismo de seguridad de Apple llamado **Gatekeeper**, que pone en "
 
 **Solución Inmediata:**
 1. Dentro del `.zip` que descargaste, incluimos una herramienta llamada `Fix_Mac_Error.command`.
-2. Da **Click Derecho** sobre ese archivo y selecciona **Abrir**.
-3. Se abrirá una terminal que limpiará automáticamente la cuarentena de Apple de tus archivos.
+2. Abre la aplicación **Terminal** en tu Mac.
+3. Arrastra el archivo `Fix_Mac_Error.command` hacia la ventana de la Terminal y presiona **Enter**.
+4. La terminal limpiará automáticamente la cuarentena de Apple de tus archivos.
 4. ¡Listo! Ya puedes usar tu plugin normalmente.
 
 *(Si eres usuario avanzado, el comando que se ejecuta de fondo es `xattr -cr /ruta/a/ExtasisRhythm.app`)*
