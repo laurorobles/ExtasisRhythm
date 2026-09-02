@@ -31,6 +31,10 @@ echo "Reparando permisos y removiendo cuarentena de Apple..."
 echo ""
 xattr -cr "$DIR/ExtasisRhythm.app" 2>/dev/null || true
 xattr -cr "$DIR/ExtasisRhythm.vst3" 2>/dev/null || true
+xattr -cr "/Applications/ExtasisRhythm.app" 2>/dev/null || true
+xattr -cr "$HOME/Applications/ExtasisRhythm.app" 2>/dev/null || true
+xattr -cr "/Library/Audio/Plug-Ins/VST3/ExtasisRhythm.vst3" 2>/dev/null || true
+xattr -cr "$HOME/Library/Audio/Plug-Ins/VST3/ExtasisRhythm.vst3" 2>/dev/null || true
 echo "✅ ¡Exito! Ya puedes mover el VST3 a tu carpeta de plugins"
 echo "✅ y abrir la App Standalone sin que macOS la bloquee."
 echo ""

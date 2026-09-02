@@ -1318,10 +1318,8 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
     g.setColour (juce::Colour (0xff00d2ff)); 
     g.drawText ("ExtasisRhythm", 16, 14, 200, 30, juce::Justification::left);
 
-    // Versión (Actualizado a v2.5)
     g.setFont (juce::FontOptions (11.0f, juce::Font::bold)); 
     g.setColour (juce::Colour (0xff777777)); 
-    g.drawText ("v2.5", 212, 26, 40, 14, juce::Justification::left);
     
     // Subtítulo
     g.setFont (juce::FontOptions (10.5f, juce::Font::bold)); 
