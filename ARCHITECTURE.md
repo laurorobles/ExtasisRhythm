@@ -1,4 +1,4 @@
-# 🔬 EXTASIS RHYTHM v2.0 — DETAILED SIGNAL & DSP ARCHITECTURE SPECIFICATION
+# 🔬 EXTASIS RHYTHM v3.0 — DETAILED SIGNAL & DSP ARCHITECTURE SPECIFICATION
 
 This document provides a comprehensive technical breakdown of the audio signal flow, DSP processing blocks, threading topology, and MIDI routing engine inside **Extasis Rhythm**.
 

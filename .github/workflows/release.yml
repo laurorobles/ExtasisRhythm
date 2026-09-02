@@ -38,7 +38,8 @@ jobs:
     - name: Package macOS
       if: runner.os == 'macOS'
       run: |
-        mkdir -p ExtasisRhythm-macOS
+        mkdir -p ExtasisRhythm-macOS/Documentation
+        cp MANUAL.md README.md TECHNICAL.md ExtasisRhythm-macOS/Documentation/
         cp -R build/ExtasisRhythm_artefacts/Release/VST3/ExtasisRhythm.vst3 ExtasisRhythm-macOS/ || true
         cp -R build/ExtasisRhythm_artefacts/Release/Standalone/ExtasisRhythm.app ExtasisRhythm-macOS/ || true
         zip -r ExtasisRhythm-macOS.zip ExtasisRhythm-macOS/
@@ -47,7 +48,8 @@ jobs:
       if: runner.os == 'Windows'
       shell: bash
       run: |
-        mkdir -p ExtasisRhythm-Windows
+        mkdir -p ExtasisRhythm-Windows/Documentation
+        cp MANUAL.md README.md TECHNICAL.md ExtasisRhythm-Windows/Documentation/
         find build -type d -name "ExtasisRhythm.vst3" -exec cp -R {} ExtasisRhythm-Windows/ \;
         find build -type f -name "ExtasisRhythm.exe" -exec cp {} ExtasisRhythm-Windows/ \; || true
         powershell -Command "Compress-Archive -Path ExtasisRhythm-Windows -DestinationPath ExtasisRhythm-Windows.zip"
@@ -55,7 +57,8 @@ jobs:
     - name: Package Linux
       if: runner.os == 'Linux'
       run: |
-        mkdir -p ExtasisRhythm-Linux
+        mkdir -p ExtasisRhythm-Linux/Documentation
+        cp MANUAL.md README.md TECHNICAL.md ExtasisRhythm-Linux/Documentation/
         find build -type d -name "ExtasisRhythm.vst3" -exec cp -R {} ExtasisRhythm-Linux/ \;
         find build -path "*/Standalone/ExtasisRhythm" -type f -exec cp {} ExtasisRhythm-Linux/ \; || true
         zip -r ExtasisRhythm-Linux.zip ExtasisRhythm-Linux/

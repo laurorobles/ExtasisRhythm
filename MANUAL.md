@@ -1,4 +1,4 @@
-# 🎛️ EXTASIS RHYTHM v2.0 — MANUAL OFICIAL DE USUARIO Y REFERENCIA TÉCNICA
+# 🎛️ EXTASIS RHYTHM v3.0 — MANUAL OFICIAL DE USUARIO Y REFERENCIA TÉCNICA
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## 1. FILOSOFÍA, ARQUITECTURA E INSPIRACIONES
 
-**Extasis Rhythm v2.0** es una estación de trabajo de percusión y caja de ritmos híbrida diseñada en C++ / JUCE para ofrecer el flujo de trabajo táctil, rápido y contundente de las cajas de ritmo clásicas de hardware junto con la flexibilidad avanzada de los secuenciadores modernos polirrítmicos y un rack de efectos vintage integrado.
+**Extasis Rhythm v3.0** es una estación de trabajo de percusión y caja de ritmos híbrida diseñada en C++ / JUCE para ofrecer el flujo de trabajo táctil, rápido y contundente de las cajas de ritmo clásicas de hardware junto con la flexibilidad avanzada de los secuenciadores modernos polirrítmicos y un rack de efectos vintage integrado.
 
 ### 🏛️ Árbol de Inspiraciones:
 * **Roland TR-808 / TR-909 / TR-8S**:
@@ -72,6 +72,7 @@ Gestiona la memoria de patrones musicales para estructurar canciones completas y
 Ubicado entre el panel de patrones y el rack de efectos. Permite insertar redobles, variaciones y transiciones complejas globales.
 
 * **Parrilla de 16 Pasos de Fill**: Cada paso cuenta con 3 estados (Apagado, Medio, Fuerte).
+* **Smart Fill Memory (Estilo MPC / Pocket Operator)**: ¡Novedad en v3.0! Al desactivar un Fill, el secuenciador recuerda tu patrón original de manera inteligente, garantizando que el groove nunca caiga o se desfase al regresar a la programación principal.
 * **`3L` (Triplet Fill)**: Conmuta la métrica del Fill a tresillos de 12 pasos.
 * **`FIT` (Fit Fill)**: Comprime o expande la secuencia de fill uniformemente dentro del compás.
 * **`MODE` (FWD / REV / RND / PNB)**: Determina la dirección de lectura del fill.
@@ -364,7 +365,7 @@ flowchart TD
    - Los instrumentos pasan por reducción de bits PCM, overdrive armónico, modelado de transitorios, filtros DJ resonantes, modulación estéreo BBD (Flanger/Chorus) y sidechain PUMP antes del limitador de seguridad True-Peak.
 
 ---
-*Extasis Rhythm v2.0 — Diseñado para la creación rítmica sin límites.*
+*Extasis Rhythm v3.0 — Diseñado para la creación rítmica sin límites.*
 
 
 > **Licencias:** Consigue tu licencia oficial en [http://laurorobles.gumroad.com](http://laurorobles.gumroad.com)
