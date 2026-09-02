@@ -15,6 +15,8 @@
 10. [Modo Demo & Activación de Licencia](#10--modo-demo--activación-de-licencia)
 11. [Entrada/Salida Multi-Canal en Ableton Live y DAWs](#11-️-entradasalida-multi-canal-en-ableton-live-y-daws)
 12. [Arquitectura Detallada de la Señal & Flujo DSP](#12-🔬-arquitectura-detallada-de-la-señal--flujo-dsp)
+13. [Instalación y Resolución de Problemas](#13-instalación-y-resolución-de-problemas)
+
 
 ---
 
@@ -369,3 +371,20 @@ flowchart TD
 
 
 > **Licencias:** Consigue tu licencia oficial en [http://laurorobles.gumroad.com](http://laurorobles.gumroad.com)
+
+---
+
+## 13. INSTALACIÓN Y RESOLUCIÓN DE PROBLEMAS
+
+### 🍏 Usuarios de macOS (Error de "App Dañada")
+Si al intentar abrir Extasis Rhythm o cargarlo en tu DAW, macOS arroja un error diciendo que **"ExtasisRhythm está dañado y no puede abrirse. Deberías moverlo al basurero"**, ¡no te asustes! El archivo está en perfecto estado.
+
+Este es un mecanismo de seguridad de Apple llamado **Gatekeeper**, que pone en "cuarentena" los plugins descargados de internet de desarrolladores independientes.
+
+**Solución Inmediata:**
+1. Dentro del `.zip` que descargaste, incluimos una herramienta llamada `Fix_Mac_Error.command`.
+2. Da **Click Derecho** sobre ese archivo y selecciona **Abrir**.
+3. Se abrirá una terminal que limpiará automáticamente la cuarentena de Apple de tus archivos.
+4. ¡Listo! Ya puedes usar tu plugin normalmente.
+
+*(Si eres usuario avanzado, el comando que se ejecuta de fondo es `xattr -cr /ruta/a/ExtasisRhythm.app`)*

@@ -1,4 +1,4 @@
-# Extasis Rhythm (v3.0.2)
+# Extasis Rhythm (v3.0.9)
 
 Extasis Rhythm is a smart, polyrhythmic, and vintage-flavored drum machine plugin (VST3 / Standalone) designed for modern music production. Inspired by the golden era of 12-bit samplers and modern generative sequencers, it provides unparalleled rhythm creation with a cutting-edge DSP engine.
 
@@ -21,6 +21,8 @@ We provide pre-compiled binaries for **Windows**, **macOS**, and **Linux**. You 
 2. Extract the ZIP.
 3. Move `ExtasisRhythm.vst3` to `/Library/Audio/Plug-Ins/VST3/`.
 4. (Optional) Run the Standalone `ExtasisRhythm.app` directly.
+
+> **⚠️ macOS Gatekeeper Notice:** If macOS tells you the app is "Damaged" and should be moved to the Trash, this is a standard Apple security feature for indie plugins. Simply right-click on the `Fix_Mac_Error.command` file (included in the ZIP) and select **Open**. This will safely bypass the quarantine and allow the plugin to run.
 
 ### Windows
 1. Go to the [Releases](https://github.com/laurorobles/ExtasisRhythm/releases) page and download `ExtasisRhythm-Windows.zip`.
