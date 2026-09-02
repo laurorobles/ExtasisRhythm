@@ -15,14 +15,19 @@ jobs:
         os: [macos-13, windows-latest, ubuntu-22.04]
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+    - name: Checkout Code (with JUCE submodule)
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Install Linux Dependencies
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libasound2-dev libx11-dev libxinerama-dev libxext-dev libfreetype6-dev libwebkit2gtk-4.0-dev libglu1-mesa-dev libjack-jackd2-dev libcurl4-openssl-dev
+        sudo apt-get install -y \
+          libasound2-dev libx11-dev libxinerama-dev libxext-dev \
+          libfreetype6-dev libwebkit2gtk-4.0-dev libglu1-mesa-dev \
+          libjack-jackd2-dev libcurl4-openssl-dev
 
     - name: Configure CMake
       run: cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -34,7 +39,7 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         mkdir -p ExtasisRhythm-macOS
-        cp -R build/ExtasisRhythm_artefacts/Release/VST3/ExtasisRhythm.vst3 ExtasisRhythm-macOS/
+        cp -R build/ExtasisRhythm_artefacts/Release/VST3/ExtasisRhythm.vst3 ExtasisRhythm-macOS/ || true
         cp -R build/ExtasisRhythm_artefacts/Release/Standalone/ExtasisRhythm.app ExtasisRhythm-macOS/ || true
         zip -r ExtasisRhythm-macOS.zip ExtasisRhythm-macOS/
 
@@ -44,19 +49,19 @@ jobs:
       run: |
         mkdir -p ExtasisRhythm-Windows
         find build -type d -name "ExtasisRhythm.vst3" -exec cp -R {} ExtasisRhythm-Windows/ \;
-        find build -type f -name "ExtasisRhythm.exe" -exec cp {} ExtasisRhythm-Windows/ \;
+        find build -type f -name "ExtasisRhythm.exe" -exec cp {} ExtasisRhythm-Windows/ \; || true
         powershell -Command "Compress-Archive -Path ExtasisRhythm-Windows -DestinationPath ExtasisRhythm-Windows.zip"
-        
+
     - name: Package Linux
       if: runner.os == 'Linux'
       run: |
         mkdir -p ExtasisRhythm-Linux
         find build -type d -name "ExtasisRhythm.vst3" -exec cp -R {} ExtasisRhythm-Linux/ \;
-        find build -type f -executable -name "ExtasisRhythm" -exec cp {} ExtasisRhythm-Linux/ \;
+        find build -path "*/Standalone/ExtasisRhythm" -type f -exec cp {} ExtasisRhythm-Linux/ \; || true
         zip -r ExtasisRhythm-Linux.zip ExtasisRhythm-Linux/
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ExtasisRhythm-${{ runner.os }}
         path: ExtasisRhythm-*.zip
@@ -66,22 +71,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Download Artifacts
-        uses: actions/download-artifact@v3
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*.zip
+          files: artifacts/*.zip
           name: Extasis Rhythm ${{ github.ref_name }}
           body: |
-            ## Extasis Rhythm 2.6
-            * **FFT Smart Auto-Tagging**
-            * **True 12-Bit PCM Sample-and-Hold**
-            * **Offline Key Validation**
+            ## 🚀 Extasis Rhythm ${{ github.ref_name }}
+
+            ### ✨ New Features
+            * **Smart Fill Memory (MPC / Pocket Operator Style):** The sequencer now intelligently remembers your last state when exiting a Fill, ensuring a seamless groove transition.
+            * **Cleaner UI:** License link moved exclusively to the Serial Activation window.
+
+            ### 🛠 Fixes
+            * Cross-platform stability improvements for Windows and Linux DAWs.
+            * Fixed preset engine header declarations.
+            * Resolved out-of-bounds memory access on plugin shutdown.
+
+            ---
+            **Installation:** Extract the ZIP for your platform and drop the `.vst3` into your DAW's plugin folder.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
