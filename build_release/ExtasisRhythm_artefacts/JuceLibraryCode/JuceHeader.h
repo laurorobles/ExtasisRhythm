@@ -43,7 +43,7 @@ namespace ProjectInfo
 {
     const char* const  projectName    = "ExtasisRhythm";
     const char* const  companyName    = "Extasis Records";
-    const char* const  versionString  = "3.0.10";
-    const int          versionNumber  =  0x3000a;
+    const char* const  versionString  = "3.1.0";
+    const int          versionNumber  =  0x30100;
 }
 #endif

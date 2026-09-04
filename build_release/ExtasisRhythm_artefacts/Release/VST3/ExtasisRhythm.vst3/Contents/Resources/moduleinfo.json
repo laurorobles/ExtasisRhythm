@@ -1,6 +1,6 @@
 {
   "Name": "ExtasisRhythm",
-  "Version": "3.0.10",
+  "Version": "3.1.0",
   "Factory Info": {
     "Vendor": "Extasis Records",
     "URL": "",
@@ -17,7 +17,7 @@
       "Category": "Audio Module Class",
       "Name": "ExtasisRhythm",
       "Vendor": "Extasis Records",
-      "Version": "3.0.10",
+      "Version": "3.1.0",
       "SDKVersion": "VST 3.8.0",
       "Sub Categories": [
         "Instrument",
@@ -34,7 +34,7 @@
       "Category": "Component Controller Class",
       "Name": "ExtasisRhythm",
       "Vendor": "Extasis Records",
-      "Version": "3.0.10",
+      "Version": "3.1.0",
       "SDKVersion": "VST 3.8.0",
       "Sub Categories": [
         "Instrument",

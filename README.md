@@ -1,12 +1,12 @@
-# Extasis Rhythm (v3.0.10)
+# Extasis Rhythm (v3.1.0)
 
 Extasis Rhythm is a smart, polyrhythmic, and vintage-flavored drum machine plugin (VST3 / Standalone) designed for modern music production. Inspired by the golden era of 12-bit samplers and modern generative sequencers, it provides unparalleled rhythm creation with a cutting-edge DSP engine.
 
-## 🌟 What's New in Version 3.0.2
-* **Smart Fill Memory (MPC / Pocket Operator Style):** Completely rewritten Fill engine. The sequencer now intelligently remembers your last state when exiting a Fill, ensuring a seamless transition back to your original rhythm without dropping the groove.
-* **Cleaner UI:** The purchase/license link has been moved exclusively to the Serial Activation window, giving you a cleaner, distraction-free interface.
-* **Cross-Platform Stability:** Resolved algorithm edge cases that caused crashes on certain Windows and Linux host DAWs.
-* **Preset Engine:** Fixed missing preset declarations for more reliable preset loading and saving.
+## 🌟 What's New in Version 3.1.0
+* **Modular Sampler (Drag & Drop):** You can now drag and drop individual `.wav` or `.aif` files directly onto any of the 12 channels to build your custom drum kits on the fly.
+* **Drag to DAW (Offline Render):** Instantly export your current pattern! Simply click and drag the new 〰️ WAV button to your DAW's timeline (Ableton, FL Studio) or your Desktop to instantly bounce a 16-second loop.
+* **Collect & Save Custom Kits:** The new `COLLECT KIT` button gathers all your randomly dragged samples, organizes them, renames them, and permanently saves them to a new user preset folder.
+* **Robust Core Engine:** Implemented thread-safe `thread_local` memory locks for the UI and DSP threads, ensuring absolutely zero glitches or race conditions when doing offline renders or dragging files.
 * **FFT Smart Auto-Tagging:** Drop any chaotic folder of samples, and the plugin will use Spectral Centroid analysis to instantly recognize Kicks, Snares, and Hi-Hats.
 * **True 12-Bit Sample-and-Hold:** Authentic PCM sample-rate reduction algorithm mirroring the legendary E-mu SP-1200 crunch.
 * **Smooth Sidechain (PUMP):** Redesigned envelope follower (attack/release) for musical and organic master-bus ducking.
@@ -34,7 +34,7 @@ We provide pre-compiled binaries for **Windows**, **macOS**, and **Linux**. You 
 2. Extract the ZIP and copy the `.vst3` directory to `~/.vst3/` or `/usr/lib/vst3/`.
 
 ## 🎹 Quick Start
-* **Loading Kits:** Click the folder icon to select a directory containing your `.wav` files. The Smart Engine will automatically map them to the 8 channels.
+* **Loading Kits:** Click the folder icon to select a directory, or simply Drag & Drop your own `.wav` files onto individual channels to build a modular kit. The Smart Engine handles the mapping.
 * **Sequencer:** Use the 16-step polyrhythmic sequencer. Adjust the lengths of each channel individually for generative Euclidean rhythms.
 * **DSP Rack:** Apply Filters, 12-bit crush, Overdrive, Reverb, Delay, and Master Pump (Sidechain) on the fly.
 
