@@ -228,7 +228,72 @@ public:
     }
 };
 
+
+class ExportDragComponent : public juce::Component, public juce::SettableTooltipClient
+{
+public:
+    ExportDragComponent(ExtasisRhythmProcessor& p) : processor(p) {
+        
+    }
+
+    void paint(juce::Graphics& g) override {
+        g.setColour(juce::Colour(0xff2d3436));
+        g.fillRoundedRectangle(getLocalBounds().toFloat(), 4.0f);
+        
+        g.setColour(isDragging ? juce::Colours::cyan : juce::Colour(0xff00d2ff));
+        g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1.0f), 4.0f, 1.5f);
+        
+        g.setFont(12.0f);
+        g.drawText("〰️ WAV", getLocalBounds(), juce::Justification::centred);
+    }
+    
+    void mouseDown(const juce::MouseEvent& e) override {
+        isDragging = false;
+    }
+
+    void mouseDrag(const juce::MouseEvent& e) override {
+        if (!isDragging && e.getDistanceFromDragStart() > 3) {
+            isDragging = true;
+            repaint();
+            
+            juce::File tempDir = juce::File::getSpecialLocation(juce::File::tempDirectory);
+            juce::File tempWav = tempDir.getChildFile("Extasis_Loop.wav");
+            
+            if (processor.renderOfflineLoop(tempWav)) {
+                juce::StringArray files;
+                files.add(tempWav.getFullPathName());
+                juce::DragAndDropContainer::performExternalDragDropOfFiles(files, false, this);
+            }
+            
+            isDragging = false;
+            repaint();
+        }
+    }
+    
+    void mouseUp(const juce::MouseEvent& e) override {
+        if (!isDragging) {
+            // It was just a click
+            chooser = std::make_unique<juce::FileChooser>("Save Loop as WAV...", 
+                                                          juce::File::getSpecialLocation(juce::File::userDesktopDirectory).getChildFile("Extasis_Loop.wav"), 
+                                                          "*.wav");
+            chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::warnAboutOverwriting,
+                [this](const juce::FileChooser& fc) {
+                    juce::File file = fc.getResult();
+                    if (file != juce::File()) {
+                        processor.renderOfflineLoop(file);
+                    }
+                });
+        }
+    }
+
+private:
+    ExtasisRhythmProcessor& processor;
+    bool isDragging = false;
+    std::unique_ptr<juce::FileChooser> chooser;
+};
+
 class ExtasisRhythmEditor  : public juce::AudioProcessorEditor,
+
                              public juce::Timer
 {
 public:
@@ -260,7 +325,8 @@ private:
 
     juce::ComboBox globalKitSelector;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> globalKitAtt;
-    juce::TextButton saveKitButton, loadKitButton, randomKitButton, browseFolderButton;
+    juce::TextButton saveKitButton, loadKitButton, randomKitButton, browseFolderButton, collectSaveButton;
+    ExportDragComponent exportButton { audioProcessor };
     std::unique_ptr<juce::FileChooser> saveChooser;
     std::unique_ptr<juce::FileChooser> loadChooser;
     std::unique_ptr<juce::FileChooser> folderChooser;

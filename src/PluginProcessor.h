@@ -42,6 +42,7 @@ public:
     juce::StringArray getDrumKitNames() const;
     juce::StringArray getVariantsForChannel (int folderIndex, int ch) const;
     void loadSampleForChannel (int ch, int folderIndex, const juce::String& fileName);
+    void loadSampleFromAbsolutePath(int ch, const juce::String& absolutePath);
     void loadSmartSampleForChannel (int i, int kit);
     void loadGlobalDrumKit (int kit);
     void randomizeKit();
@@ -95,12 +96,18 @@ public:
 
     std::atomic<bool> isSyncedToHost { false };
     std::atomic<bool> hostPlaying { false };
+    std::atomic<bool> isOfflineRendering { false };
+    std::atomic<double> offlinePpqPosition { 0.0 };
     std::atomic<double> hostBpm { 120.0 };
 
     std::atomic<float> cpuLoad { 0.0f };
 
     juce::File samplesFolder;
     juce::Array<juce::File> drumFolders;
+    juce::String customSamplePaths[12];
+    void saveCustomKit (const juce::String& kitName);
+    bool renderOfflineLoop(const juce::File& outputFile);
+
     
     std::atomic<double> samplePositions[12];
     std::atomic<double> samplePositionsOld[12];

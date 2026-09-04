@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(ExtasisRhythm VERSION 3.0.10)
+project(ExtasisRhythm VERSION 3.1.0)
 
 if(NOT TARGET juce::juce_audio_utils)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/JUCE/CMakeLists.txt")

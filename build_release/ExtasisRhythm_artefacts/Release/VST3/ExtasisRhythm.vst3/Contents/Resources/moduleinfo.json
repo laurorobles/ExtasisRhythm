@@ -1,0 +1,50 @@
+{
+  "Name": "ExtasisRhythm",
+  "Version": "3.0.10",
+  "Factory Info": {
+    "Vendor": "Extasis Records",
+    "URL": "",
+    "E-Mail": "",
+    "Flags": {
+      "Unicode": true,
+      "Classes Discardable": false,
+      "Component Non Discardable": false,
+    },
+  },
+  "Classes": [
+    {
+      "CID": "ABCDEF019182FAEB4C61753145787452",
+      "Category": "Audio Module Class",
+      "Name": "ExtasisRhythm",
+      "Vendor": "Extasis Records",
+      "Version": "3.0.10",
+      "SDKVersion": "VST 3.8.0",
+      "Sub Categories": [
+        "Instrument",
+        "Drum",
+        "Synth",
+      ],
+      "Class Flags": 2,
+      "Cardinality": 2147483647,
+      "Snapshots": [
+      ],
+    },
+    {
+      "CID": "ABCDEF011234ABCD4C61753145787452",
+      "Category": "Component Controller Class",
+      "Name": "ExtasisRhythm",
+      "Vendor": "Extasis Records",
+      "Version": "3.0.10",
+      "SDKVersion": "VST 3.8.0",
+      "Sub Categories": [
+        "Instrument",
+        "Drum",
+        "Synth",
+      ],
+      "Class Flags": 2,
+      "Cardinality": 2147483647,
+      "Snapshots": [
+      ],
+    },
+  ],
+}

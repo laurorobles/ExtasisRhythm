@@ -326,12 +326,43 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     setupFxBtn(delaySyncButton, "SYNC", juce::Colour (0xff00d2ff)); 
     delaySyncAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (audioProcessor.apvts, "delaySync", delaySyncButton);
 
-    addAndMakeVisible (saveKitButton); 
+    addAndMakeVisible (saveKitButton);
+    addAndMakeVisible (collectSaveButton);
+    addAndMakeVisible(exportButton); 
     addAndMakeVisible (loadKitButton); 
     addAndMakeVisible (resetButton); 
     addAndMakeVisible (seqResetButton);
     
-    saveKitButton.setButtonText ("SAVE"); 
+    saveKitButton.setButtonText ("SAVE PRST");
+    collectSaveButton.setButtonText ("COLLECT KIT");
+    collectSaveButton.onClick = [this] {
+        auto* alert = new juce::AlertWindow("Save Custom Kit", "Enter a name for your custom kit:", juce::AlertWindow::QuestionIcon);
+        alert->addTextEditor("kitName", "My_Custom_Kit");
+        alert->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        alert->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        
+        alert->enterModalState(true, juce::ModalCallbackFunction::create([this, alert](int result) {
+            if (result == 1) {
+                juce::String kitName = alert->getTextEditorContents("kitName");
+                if (kitName.isNotEmpty()) {
+                    audioProcessor.saveCustomKit(kitName);
+                    refreshKitSelectors(); // Actually, the combo box is handled by ExtasisRhythmEditor but this might not refresh globalKitSelector
+                    
+                    audioProcessor.scanSampleFolders(); // Force a scan just in case
+                    globalKitSelector.clear(juce::dontSendNotification);
+                    auto kits = audioProcessor.getDrumKitNames();
+                    for (int i = 0; i < kits.size(); ++i) globalKitSelector.addItem(kits[i], i + 1);
+                    
+                    int currentKit = 0;
+                    for (int i = 0; i < kits.size(); ++i) {
+                        if (kits[i] == kitName) currentKit = i;
+                    }
+                    globalKitSelector.setSelectedId(currentKit + 1, juce::sendNotificationSync);
+                }
+            }
+            delete alert;
+        }));
+    }; 
     loadKitButton.setButtonText ("LOAD"); 
     resetButton.setButtonText ("RESET"); 
     seqResetButton.setButtonText ("SEQ RST");

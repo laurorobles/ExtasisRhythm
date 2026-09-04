@@ -535,7 +535,41 @@ void ExtasisRhythmProcessor::loadSampleForChannel(int ch, int folderIndex, const
     }
 }
 
+void ExtasisRhythmProcessor::loadSampleFromAbsolutePath(int ch, const juce::String& absolutePath) {
+    if (ch < 0 || ch >= 12) return;
+    juce::File sample(absolutePath);
+    if (sample.existsAsFile()) {
+        auto* reader = formatManager.createReaderFor(sample);
+        if (reader) {
+            int numSamps = (int) reader->lengthInSamples;
+            juce::AudioBuffer<float> tempBuffer ((int) reader->numChannels, numSamps);
+            reader->read(&tempBuffer, 0, numSamps, 0, true, true);
+            delete reader;
+            
+            float maxPeak = 0.0f;
+            for (int c = 0; c < tempBuffer.getNumChannels(); ++c) {
+                float channelPeak = tempBuffer.getMagnitude(c, 0, numSamps);
+                if (channelPeak > maxPeak) maxPeak = channelPeak;
+            }
+            if (maxPeak > 0.0001f) {
+                tempBuffer.applyGain(0.707f / maxPeak);
+            }
+            double fileSr = reader->sampleRate;
+            auto newBuf = new SampleBuffer(std::move(tempBuffer), fileSr > 0.0 ? fileSr : 44100.0);
+            {
+                juce::SpinLock::ScopedLockType sl(pointerLock);
+                sampleBuffers[ch] = newBuf;
+            }
+            currentSampleName.set(ch, sample.getFileName());
+        }
+    }
+}
+
 void ExtasisRhythmProcessor::loadSmartSampleForChannel(int i, int kit) {
+    if (customSamplePaths[i].isNotEmpty()) {
+        loadSampleFromAbsolutePath(i, customSamplePaths[i]);
+        return;
+    }
     if (kit < 0 || kit >= drumFolders.size()) return;
     juce::File kitDir = drumFolders[kit];
     juce::Array<juce::File> allFiles;
@@ -951,6 +985,8 @@ void ExtasisRhythmProcessor::updateLicenseStatus()
     }
 }
 
+thread_local bool isBouncingThread = false;
+
 void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) {
     auto startTime = juce::Time::getHighResolutionTicks(); 
 
@@ -967,6 +1003,10 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
     buffer.clear(); 
     if (getSampleRate() <= 0.0 || buffer.getNumChannels() == 0) return;
+
+    if (isOfflineRendering.load() && !isBouncingThread) {
+        return; // Mutear el thread de audio real mientras el thread de UI renderiza
+    }
 
     if (!isLicensedCached.load()) {
         int64_t currentElapsed = demoSamplesElapsed.load();
@@ -1028,7 +1068,11 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     }
 
     bool currentHostPlaying = false; double currentHostBpm = 120.0; double ppqPosition = 0.0; bool hasHostTime = false;
-    if (auto* playHead = getPlayHead()) {
+    if (isOfflineRendering.load()) {
+        currentHostPlaying = true;
+        hasHostTime = true;
+        ppqPosition = offlinePpqPosition.load();
+    } else if (auto* playHead = getPlayHead()) {
         if (auto pos = playHead->getPosition()) {
             currentHostPlaying = pos->getIsPlaying();
             if (pos->getBpm().hasValue()) currentHostBpm = *pos->getBpm();
@@ -1739,4 +1783,115 @@ int ExtasisRhythmProcessor::analyzeAudioFile(const juce::File& file) {
     }
     
     return -1; 
+}
+
+void ExtasisRhythmProcessor::saveCustomKit(const juce::String& kitName) {
+    juce::File userKitsDir = samplesFolder.getChildFile("User_Kits");
+    if (!userKitsDir.exists()) userKitsDir.createDirectory();
+    
+    juce::File newKitDir = userKitsDir.getChildFile(kitName);
+    if (!newKitDir.exists()) newKitDir.createDirectory();
+
+    juce::String prefixes[] = {
+        "01_Kick", "02_Snare", "03_CHH", "04_OHH", "05_Clap", "06_Rim", 
+        "07_HiTom", "08_MidTom", "09_LowTom", "10_Cowbell", "11_Crash", "12_Ride"
+    };
+
+    for (int i = 0; i < 12; ++i) {
+        juce::File sourceFile;
+        if (customSamplePaths[i].isNotEmpty()) {
+            sourceFile = juce::File(customSamplePaths[i]);
+        } else {
+            int chKit = (int)apvts.getRawParameterValue("sampleSource_" + juce::String(i))->load();
+            if (chKit >= 0 && chKit < drumFolders.size()) {
+                sourceFile = drumFolders[chKit].getChildFile(currentSampleName[i]);
+            }
+        }
+        
+        if (sourceFile.existsAsFile()) {
+            juce::String extension = sourceFile.getFileExtension();
+            juce::File destFile = newKitDir.getChildFile(prefixes[i] + extension);
+            sourceFile.copyFileTo(destFile);
+        }
+    }
+    
+    // Clear custom paths since they are now part of a kit
+    for (int i = 0; i < 12; ++i) customSamplePaths[i] = "";
+    
+    // Rescan folders to include the new kit
+    scanSampleFolders();
+    
+    // Set current kit to the new folder
+    for (int i = 0; i < drumFolders.size(); ++i) {
+        if (drumFolders[i].getFileName() == kitName) {
+            loadGlobalDrumKit(i);
+            break;
+        }
+    }
+}
+
+bool ExtasisRhythmProcessor::renderOfflineLoop(const juce::File& outputFile) {
+    double renderSampleRate = 44100.0;
+    double currentBpm = hostBpm.load();
+    if (currentBpm <= 0) currentBpm = 120.0;
+    
+    // 32 steps = 8 beats (assuming 16th notes)
+    double totalSeconds = 8.0 * (60.0 / currentBpm);
+    int totalSamples = (int)(totalSeconds * renderSampleRate);
+    
+    juce::AudioBuffer<float> renderBuffer(2, totalSamples);
+    renderBuffer.clear();
+
+    // Save state
+    bool wasPlaying = hostPlaying.load();
+    double oldBpm = hostBpm.load();
+    
+    // Reset state for clean bounce
+    isBouncingThread = true;
+    isOfflineRendering.store(true);
+    offlinePpqPosition.store(0.0);
+    hostPlaying = true;
+    for (int i=0; i<12; ++i) {
+        samplePositions[i] = -1.0;
+        samplePositionsOld[i] = -1.0;
+        currentMappedStep[i] = 0;
+        flashCounters[i] = 0;
+    }
+    
+    int blockSize = 512;
+    int samplesRendered = 0;
+    
+    juce::MidiBuffer dummyMidi;
+    
+    while (samplesRendered < totalSamples) {
+        int numToRender = std::min(blockSize, totalSamples - samplesRendered);
+        juce::AudioBuffer<float> tempBuffer(2, numToRender);
+        tempBuffer.clear();
+        
+        processBlock(tempBuffer, dummyMidi);
+        
+        for (int ch = 0; ch < 2; ++ch) {
+            renderBuffer.copyFrom(ch, samplesRendered, tempBuffer, ch, 0, numToRender);
+        }
+        samplesRendered += numToRender;
+    }
+    
+    // Restore state
+    isOfflineRendering.store(false);
+    isBouncingThread = false;
+    hostPlaying = wasPlaying;
+    
+    // Write to file
+    if (outputFile.existsAsFile()) outputFile.deleteFile();
+    
+    juce::WavAudioFormat wavFormat;
+    std::unique_ptr<juce::AudioFormatWriter> writer(
+        wavFormat.createWriterFor(new juce::FileOutputStream(outputFile), renderSampleRate, 2, 24, {}, 0)
+    );
+    
+    if (writer != nullptr) {
+        writer->writeFromAudioSampleBuffer(renderBuffer, 0, renderBuffer.getNumSamples());
+        return true;
+    }
+    return false;
 }

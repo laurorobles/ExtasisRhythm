@@ -167,3 +167,34 @@ void ChannelStripComponent::resized()
     springSendSlider.setBounds (sz(7, 226, kSize, kSize));
     delaySendSlider.setBounds (sz(51, 226, kSize, kSize));
 }
+
+bool ChannelStripComponent::isInterestedInFileDrag(const juce::StringArray& files) {
+    for (auto file : files) {
+        if (file.endsWithIgnoreCase(".wav") || file.endsWithIgnoreCase(".aif") || file.endsWithIgnoreCase(".mp3")) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void ChannelStripComponent::filesDropped(const juce::StringArray& files, int x, int y) {
+    isDragging = false;
+    repaint();
+    for (auto file : files) {
+        if (file.endsWithIgnoreCase(".wav") || file.endsWithIgnoreCase(".aif") || file.endsWithIgnoreCase(".mp3")) {
+            audioProcessor.customSamplePaths[channelIndex] = file;
+            audioProcessor.loadSmartSampleForChannel(channelIndex, 0);
+            return;
+        }
+    }
+}
+
+void ChannelStripComponent::fileDragEnter(const juce::StringArray& files, int x, int y) {
+    isDragging = true;
+    repaint();
+}
+
+void ChannelStripComponent::fileDragExit(const juce::StringArray& files) {
+    isDragging = false;
+    repaint();
+}
