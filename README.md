@@ -1,6 +1,16 @@
 # Extasis Rhythm (v3.1.0)
 
-Extasis Rhythm is a smart, polyrhythmic, and vintage-flavored drum machine plugin (VST3 / Standalone) designed for modern music production. Inspired by the golden era of 12-bit samplers and modern generative sequencers, it provides unparalleled rhythm creation with a cutting-edge DSP engine.
+**Extasis Rhythm** is a powerful, polyrhythmic, and vintage-flavored modular drum machine plugin (VST3 / Standalone) designed for modern music production. Inspired by the crunch of golden-era 12-bit samplers and the generative flexibility of modern sequencers, it provides unparalleled rhythm creation through a cutting-edge DSP engine.
+
+Whether you are producing Lo-Fi, House, Techno, or Hip-Hop, Extasis Rhythm gives you complete control over every element of your beat with a massive suite of built-in modules:
+
+* **🎛️ 12-Channel Modular Sampler:** Drag & drop your own `.wav` or `.aif` files directly onto any channel, or let the FFT Smart Engine automatically analyze and map an entire folder of samples. Features "Collect & Save" to instantly build your own custom kits.
+* **🧬 Polyrhythmic Sequencer:** 12 independent sequencer lanes with custom step lengths for Euclidean rhythms, 8 pattern slots, and a Smart Fill Memory (MPC / Pocket Operator style) that seamlessly returns to your groove.
+* **🎚️ Advanced Channel Strips:** Sculpt each voice individually with Pitch, Tone, Attack, Decay, Pan, and dedicated FX Sends (Delay, Spring Reverb), along with clickless Mute/Solo.
+* **📼 Vintage FX Rack:** Authentic 12-Bit and 8-Bit PCM sample-rate reduction (SP-1200 style), classic analog Chorus, Flanger, syncable Bucket-Brigade Delay, and a vintage Spring Reverb module.
+* **🔥 Master Bus & Saturation:** Glue your mix together with a dedicated Overdrive/Distortion circuit, DJ-style Master HPF/LPF with resonance, Analog/Vinyl noise modes, Anti-Aliasing, and a built-in Master Clipper & Limiter.
+* **🫁 PUMP (Sidechain Ducking):** An organic, smooth master-bus envelope follower to give your beats that heavy, pumping sidechain compression effect instantly—no complex DAW routing required.
+* **🚀 Instant Drag-to-DAW Export:** Generate a perfect bounced loop in milliseconds! Just drag the 〰️ WAV icon directly from the plugin into your DAW's timeline or your Desktop.
 
 ## 🌟 What's New in Version 3.1.0
 * **Modular Sampler (Drag & Drop):** You can now drag and drop individual `.wav` or `.aif` files directly onto any of the 12 channels to build your custom drum kits on the fly.
