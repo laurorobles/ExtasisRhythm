@@ -542,6 +542,7 @@ void ExtasisRhythmProcessor::loadSampleFromAbsolutePath(int ch, const juce::Stri
         auto* reader = formatManager.createReaderFor(sample);
         if (reader) {
             int numSamps = (int) reader->lengthInSamples;
+            double fileSr = reader->sampleRate;
             juce::AudioBuffer<float> tempBuffer ((int) reader->numChannels, numSamps);
             reader->read(&tempBuffer, 0, numSamps, 0, true, true);
             delete reader;
@@ -554,7 +555,6 @@ void ExtasisRhythmProcessor::loadSampleFromAbsolutePath(int ch, const juce::Stri
             if (maxPeak > 0.0001f) {
                 tempBuffer.applyGain(0.707f / maxPeak);
             }
-            double fileSr = reader->sampleRate;
             auto newBuf = new SampleBuffer(std::move(tempBuffer), fileSr > 0.0 ? fileSr : 44100.0);
             {
                 juce::SpinLock::ScopedLockType sl(pointerLock);
@@ -655,6 +655,7 @@ void ExtasisRhythmProcessor::loadSmartSampleForChannel(int i, int kit) {
 
 void ExtasisRhythmProcessor::loadGlobalDrumKit(int kit) {
     for (int i = 0; i < 12; ++i) {
+        customSamplePaths[i] = "";
         loadSmartSampleForChannel(i, kit);
         // --- BUG DE UI DESINCRONIZADA ARREGLADO ---
         // Le avisamos al UI que cambiamos la carpeta fuente (Kit) de este canal
@@ -1831,7 +1832,7 @@ void ExtasisRhythmProcessor::saveCustomKit(const juce::String& kitName) {
 }
 
 bool ExtasisRhythmProcessor::renderOfflineLoop(const juce::File& outputFile) {
-    double renderSampleRate = 44100.0;
+    double renderSampleRate = getSampleRate() > 0.0 ? getSampleRate() : 44100.0;
     double currentBpm = hostBpm.load();
     if (currentBpm <= 0) currentBpm = 120.0;
     

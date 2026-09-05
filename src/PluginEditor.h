@@ -233,19 +233,24 @@ class ExportDragComponent : public juce::Component, public juce::SettableTooltip
 {
 public:
     ExportDragComponent(ExtasisRhythmProcessor& p) : processor(p) {
-        
+        setMouseCursor (juce::MouseCursor::DraggingHandCursor);
+        setTooltip ("Drag to DAW or Desktop (WAV Loop)\nClick to Save As...");
     }
 
     void paint(juce::Graphics& g) override {
-        g.setColour(juce::Colour(0xff2d3436));
+        g.setColour(isHovered ? juce::Colour(0xff3d4446) : juce::Colour(0xff2d3436));
         g.fillRoundedRectangle(getLocalBounds().toFloat(), 4.0f);
         
-        g.setColour(isDragging ? juce::Colours::cyan : juce::Colour(0xff00d2ff));
+        g.setColour(isDragging ? juce::Colours::yellow : juce::Colour(0xff00d2ff));
         g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1.0f), 4.0f, 1.5f);
         
-        g.setFont(12.0f);
-        g.drawText("〰️ WAV", getLocalBounds(), juce::Justification::centred);
+        g.setFont(juce::FontOptions (10.0f, juce::Font::bold));
+        g.setColour(juce::Colours::white);
+        g.drawText("〰️ DRAG WAV", getLocalBounds(), juce::Justification::centred);
     }
+
+    void mouseEnter(const juce::MouseEvent&) override { isHovered = true; repaint(); }
+    void mouseExit(const juce::MouseEvent&) override { isHovered = false; repaint(); }
     
     void mouseDown(const juce::MouseEvent& e) override {
         isDragging = false;
@@ -271,8 +276,7 @@ public:
     }
     
     void mouseUp(const juce::MouseEvent& e) override {
-        if (!isDragging) {
-            // It was just a click
+        if (!isDragging && e.getDistanceFromDragStart() <= 3) {
             chooser = std::make_unique<juce::FileChooser>("Save Loop as WAV...", 
                                                           juce::File::getSpecialLocation(juce::File::userDesktopDirectory).getChildFile("Extasis_Loop.wav"), 
                                                           "*.wav");
@@ -289,12 +293,13 @@ public:
 private:
     ExtasisRhythmProcessor& processor;
     bool isDragging = false;
+    bool isHovered = false;
     std::unique_ptr<juce::FileChooser> chooser;
 };
 
 class ExtasisRhythmEditor  : public juce::AudioProcessorEditor,
-
-                             public juce::Timer
+                             public juce::Timer,
+                             public juce::FileDragAndDropTarget
 {
 public:
     ExtasisRhythmEditor (ExtasisRhythmProcessor&);
@@ -305,6 +310,15 @@ public:
     void timerCallback() override;
     bool keyPressed (const juce::KeyPress& key) override;
     void mouseDown (const juce::MouseEvent& e) override;
+
+    // File Drag and Drop Target for loading samples onto channels
+    bool isInterestedInFileDrag (const juce::StringArray& files) override;
+    void fileDragEnter (const juce::StringArray& files, int x, int y) override;
+    void fileDragMove (const juce::StringArray& files, int x, int y) override;
+    void fileDragExit (const juce::StringArray& files) override;
+    void filesDropped (const juce::StringArray& files, int x, int y) override;
+
+    int dragHoveredChannel = -1;
 
 private:
 
@@ -386,6 +400,8 @@ private:
     int fillSeqModeState = 0;
 
     juce::ComboBox sampleSourceSelectors[12];
+    juce::TextButton loadCustomButtons[12];
+    std::unique_ptr<juce::FileChooser> channelFileChoosers[12];
     juce::ComboBox sampleVariantSelectors[12];
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> sampleSourceAtts[12];
 

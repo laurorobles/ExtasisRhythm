@@ -373,6 +373,11 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     loadKitButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffd2691e)); 
     loadKitButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white); 
     
+    collectSaveButton.setLookAndFeel (&compactBtnLAF);
+    collectSaveButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff27ae60)); 
+    collectSaveButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+    collectSaveButton.setTooltip ("Collect custom samples and save as a new Kit"); 
+    
     resetButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffff6600)); 
     resetButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white); 
     
@@ -807,6 +812,31 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
         sampleSourceSelectors[i].addItemList (kitNames, 1); 
         sampleSourceAtts[i] = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (audioProcessor.apvts, "sampleSource_" + chStr, sampleSourceSelectors[i]);
         
+        addAndMakeVisible (loadCustomButtons[i]);
+        loadCustomButtons[i].setLookAndFeel (&compactBtnLAF);
+        loadCustomButtons[i].setButtonText ("...");
+        loadCustomButtons[i].setTooltip ("Load custom sample file for Channel " + juce::String (i + 1));
+        loadCustomButtons[i].onClick = [this, i]() {
+            channelFileChoosers[i] = std::make_unique<juce::FileChooser> (
+                "Select Audio File for Channel " + juce::String (i + 1),
+                juce::File::getSpecialLocation (juce::File::userMusicDirectory),
+                "*.wav;*.aif;*.aiff;*.mp3"
+            );
+            channelFileChoosers[i]->launchAsync (
+                juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                [this, i](const juce::FileChooser& fc) {
+                    auto file = fc.getResult();
+                    if (file.existsAsFile()) {
+                        audioProcessor.customSamplePaths[i] = file.getFullPathName();
+                        audioProcessor.loadSampleFromAbsolutePath (i, file.getFullPathName());
+                        sampleVariantSelectors[i].clear (juce::dontSendNotification);
+                        sampleVariantSelectors[i].addItem (file.getFileNameWithoutExtension(), 1);
+                        sampleVariantSelectors[i].setSelectedId (1, juce::dontSendNotification);
+                    }
+                }
+            );
+        };
+
         addAndMakeVisible (sampleVariantSelectors[i]); 
         sampleVariantSelectors[i].setLookAndFeel (&safeComboBoxLAF);
 
@@ -820,6 +850,7 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
         sampleSourceSelectors[i].onChange = [this, i]() {
             int kitIdx = sampleSourceSelectors[i].getSelectedId() - 1;
             if (kitIdx < 0) return;
+            audioProcessor.customSamplePaths[i] = "";
             audioProcessor.loadSmartSampleForChannel (i, kitIdx);
 
             auto variants = audioProcessor.getVariantsForChannel (kitIdx, i);
@@ -1513,8 +1544,15 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
         juce::ColourGradient cg (juce::Colour (0xfffcfcfc), (float)x, 186.0f, juce::Colour (0xffe0e0e0), (float)x, 442.0f, false);
         g.setGradientFill (cg); 
         g.fillRoundedRectangle ((float)x, 186.0f, 92.0f, 256.0f, 4.0f);
-        g.setColour (juce::Colour (0xffb8b8b8)); 
-        g.drawRoundedRectangle ((float)x, 186.0f, 92.0f, 256.0f, 4.0f, 1.0f);
+        if (dragHoveredChannel == i) {
+            g.setColour (juce::Colour (0xff00d2ff).withAlpha (0.25f));
+            g.fillRoundedRectangle ((float)x, 186.0f, 92.0f, 256.0f, 4.0f);
+            g.setColour (juce::Colour (0xff00d2ff));
+            g.drawRoundedRectangle ((float)x, 186.0f, 92.0f, 256.0f, 4.0f, 2.0f);
+        } else {
+            g.setColour (juce::Colour (0xffb8b8b8)); 
+            g.drawRoundedRectangle ((float)x, 186.0f, 92.0f, 256.0f, 4.0f, 1.0f);
+        }
         g.setColour (juce::Colours::white.withAlpha(0.9f)); 
         g.drawHorizontalLine (187, (float)(x + 2), (float)(x + 90));
 
@@ -1653,6 +1691,8 @@ void ExtasisRhythmEditor::resized()
     
     saveKitButton.setBounds (sz(patternX + 8, 102, 51, 22)); 
     loadKitButton.setBounds (sz(patternX + 63, 102, 51, 22));
+    collectSaveButton.setBounds (sz(patternX + 8, 126, 106, 22));
+    exportButton.setBounds (sz(patternX + 8, 150, 106, 22));
 
     auto getModuleLayout = [](int mh, int numKnobs, int customKnobSize, bool hasTopButton = false, int rowGap = 12) {
         int cols = juce::jmin(numKnobs, 2);
@@ -1725,7 +1765,8 @@ void ExtasisRhythmEditor::resized()
         muteButtons[cIdx].setBounds (sz(x + 6, 218, 18, 16)); 
         soloButtons[cIdx].setBounds (sz(x + 27, 218, 18, 16)); 
         envChannelButtons[cIdx].setBounds (sz(x + 48, 218, 38, 16));
-        sampleSourceSelectors[cIdx].setBounds (sz(x + 6, 237, 80, 17)); 
+        sampleSourceSelectors[cIdx].setBounds (sz(x + 6, 237, 60, 17)); 
+        loadCustomButtons[cIdx].setBounds (sz(x + 68, 237, 18, 17));
         sampleVariantSelectors[cIdx].setBounds (sz(x + 6, 256, 80, 17));
         
         int kSize = 34; 
@@ -1843,4 +1884,78 @@ bool ExtasisRhythmEditor::keyPressed (const juce::KeyPress& key)
 void ExtasisRhythmEditor::mouseDown (const juce::MouseEvent& e)
 {
     juce::ignoreUnused (e);
+}
+
+bool ExtasisRhythmEditor::isInterestedInFileDrag (const juce::StringArray& files)
+{
+    for (auto& f : files) {
+        if (f.endsWithIgnoreCase (".wav") || f.endsWithIgnoreCase (".aif") || f.endsWithIgnoreCase (".aiff") || f.endsWithIgnoreCase (".mp3"))
+            return true;
+    }
+    return false;
+}
+
+void ExtasisRhythmEditor::fileDragEnter (const juce::StringArray& files, int x, int y)
+{
+    fileDragMove (files, x, y);
+}
+
+void ExtasisRhythmEditor::fileDragMove (const juce::StringArray& files, int x, int y)
+{
+    juce::ignoreUnused (files);
+    float s = (float) getWidth() / 1192.0f;
+    int found = -1;
+    for (int cIdx = 0; cIdx < 12; ++cIdx) {
+        int cx = (int) ((float)(10 + cIdx * 98) * s);
+        int cw = (int) (92.0f * s);
+        int cy = (int) (186.0f * s);
+        int ch = (int) (256.0f * s);
+        if (x >= cx && x < cx + cw && y >= cy && y < cy + ch) {
+            found = cIdx;
+            break;
+        }
+    }
+    if (dragHoveredChannel != found) {
+        dragHoveredChannel = found;
+        repaint();
+    }
+}
+
+void ExtasisRhythmEditor::fileDragExit (const juce::StringArray& files)
+{
+    juce::ignoreUnused (files);
+    dragHoveredChannel = -1;
+    repaint();
+}
+
+void ExtasisRhythmEditor::filesDropped (const juce::StringArray& files, int x, int y)
+{
+    float s = (float) getWidth() / 1192.0f;
+    int targetCh = -1;
+    for (int cIdx = 0; cIdx < 12; ++cIdx) {
+        int cx = (int) ((float)(10 + cIdx * 98) * s);
+        int cw = (int) (92.0f * s);
+        int cy = (int) (186.0f * s);
+        int ch = (int) (256.0f * s);
+        if (x >= cx && x < cx + cw && y >= cy && y < cy + ch) {
+            targetCh = cIdx;
+            break;
+        }
+    }
+    dragHoveredChannel = -1;
+    repaint();
+
+    if (targetCh >= 0 && targetCh < 12) {
+        for (auto& f : files) {
+            if (f.endsWithIgnoreCase (".wav") || f.endsWithIgnoreCase (".aif") || f.endsWithIgnoreCase (".aiff") || f.endsWithIgnoreCase (".mp3")) {
+                audioProcessor.customSamplePaths[targetCh] = f;
+                audioProcessor.loadSampleFromAbsolutePath (targetCh, f);
+                
+                sampleVariantSelectors[targetCh].clear (juce::dontSendNotification);
+                sampleVariantSelectors[targetCh].addItem (juce::File (f).getFileNameWithoutExtension(), 1);
+                sampleVariantSelectors[targetCh].setSelectedId (1, juce::dontSendNotification);
+                break;
+            }
+        }
+    }
 }
