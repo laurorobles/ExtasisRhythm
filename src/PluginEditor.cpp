@@ -37,6 +37,44 @@ public:
     }
 };
 
+class BpmSliderLookAndFeel : public juce::LookAndFeel_V4
+{
+public:
+    void drawLinearSlider (juce::Graphics& g, int x, int y, int width, int height,
+                            float /*sliderPos*/, float /*minSliderPos*/, float /*maxSliderPos*/,
+                            juce::Slider::SliderStyle, juce::Slider& slider) override
+    {
+        auto bounds = juce::Rectangle<float> ((float)x, (float)y, (float)width, (float)height).reduced (0.5f);
+        
+        // Deep matte hardware background
+        g.setColour (juce::Colour (0xff121518));
+        g.fillRoundedRectangle (bounds, 4.0f);
+        
+        // Inner depth bevel
+        g.setColour (juce::Colours::black.withAlpha (0.45f));
+        g.drawRoundedRectangle (bounds, 4.0f, 1.0f);
+        
+        // Dynamic border: glows electric cyan when hovered or adjusting
+        bool isHovered = slider.isMouseOverOrDragging();
+        g.setColour (isHovered ? juce::Colour (0xff00d2ff).withAlpha (0.85f) : juce::Colour (0xff2d353c));
+        g.drawRoundedRectangle (bounds.reduced (0.5f), 4.0f, 1.0f);
+        
+        // Stylized "BPM" badge on the left
+        auto badgeBounds = juce::Rectangle<float> (bounds.getX() + 4.0f, bounds.getY() + 3.0f, 28.0f, bounds.getHeight() - 6.0f);
+        g.setColour (isHovered ? juce::Colour (0xff1c2631) : juce::Colour (0xff181f25));
+        g.fillRoundedRectangle (badgeBounds, 2.5f);
+        
+        g.setFont (juce::FontOptions (8.0f, juce::Font::bold));
+        g.setColour (isHovered ? juce::Colour (0xff00d2ff) : juce::Colour (0xff7e8e9f));
+        g.drawText ("BPM", badgeBounds, juce::Justification::centred);
+    }
+
+    juce::Font getLabelFont (juce::Label&) override
+    {
+        return juce::FontOptions (13.5f, juce::Font::bold);
+    }
+};
+
 class CompactButtonLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
@@ -191,6 +229,7 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     static MasterChannelKnobLookAndFeel masterChannelKnobLAF;
     static CustomComboBoxLookAndFeel safeComboBoxLAF;
     static CompactButtonLookAndFeel compactBtnLAF;
+    static BpmSliderLookAndFeel bpmSliderLAF;
 
     logoImage = juce::ImageFileFormat::loadFrom (BinaryData::logo_png, (size_t) BinaryData::logo_pngSize);
 
@@ -257,10 +296,14 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
 
     addAndMakeVisible (bpmSlider); 
     bpmSlider.setSliderStyle (juce::Slider::LinearBar); 
-    bpmSlider.setTextBoxStyle (juce::Slider::TextBoxLeft, false, 55, 18); 
-    bpmSlider.setNumDecimalPlacesToDisplay(1); 
-    bpmSlider.setColour (juce::Slider::textBoxTextColourId, juce::Colour (0xffff6600)); 
-    bpmSlider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colour(0xffeaeaea));
+    bpmSlider.setLookAndFeel (&bpmSliderLAF);
+    bpmSlider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 86, 22); 
+    bpmSlider.setNumDecimalPlacesToDisplay (1); 
+    bpmSlider.setColour (juce::Slider::textBoxTextColourId, juce::Colour (0xffffa000)); 
+    bpmSlider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+    bpmSlider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    bpmSlider.setColour (juce::Slider::textBoxHighlightColourId, juce::Colour (0xff00d2ff).withAlpha (0.4f));
+    bpmSlider.setTooltip ("Tempo (BPM): Drag horizontally to adjust, double-click to type");
     bpmAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "bpm", bpmSlider);
 
     auto setupMasterBtn = [this](juce::TextButton& btn, const juce::String& txt, bool isRadio) {
@@ -363,20 +406,23 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
             delete alert;
         }));
     }; 
-    loadKitButton.setButtonText ("LOAD"); 
-    resetButton.setButtonText ("RESET"); 
-    seqResetButton.setButtonText ("SEQ RST");
-    
-    saveKitButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff2e8b57)); 
+    saveKitButton.setButtonText ("SAVE");
+    saveKitButton.setLookAndFeel (&compactBtnLAF);
+    saveKitButton.setTooltip ("Save Extasis Rhythm Preset (.xml)");
+    saveKitButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff1b5e20)); 
     saveKitButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white); 
     
-    loadKitButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffd2691e)); 
+    loadKitButton.setButtonText ("LOAD"); 
+    loadKitButton.setLookAndFeel (&compactBtnLAF);
+    loadKitButton.setTooltip ("Load Extasis Rhythm Preset (.xml)");
+    loadKitButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff1e3a5f)); 
     loadKitButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white); 
     
+    collectSaveButton.setButtonText ("COLLECT KIT");
     collectSaveButton.setLookAndFeel (&compactBtnLAF);
-    collectSaveButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff27ae60)); 
+    collectSaveButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff15803d)); 
     collectSaveButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
-    collectSaveButton.setTooltip ("Collect custom samples and save as a new Kit"); 
+    collectSaveButton.setTooltip ("Collect all custom samples into a new permanent Kit folder"); 
     
     resetButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffff6600)); 
     resetButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white); 
@@ -571,6 +617,7 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     juce::String pNames = "ABCDEFGH";
     for (int i = 0; i < 8; ++i) {
         addAndMakeVisible (patternButtons[i]); 
+        patternButtons[i].setLookAndFeel (&compactBtnLAF);
         patternButtons[i].setButtonText (juce::String::charToString(pNames[i])); 
         patternButtons[i].onClick = [this, i] {
             audioProcessor.changePattern (i);
@@ -581,10 +628,11 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     updatePatternButtonStates();
 
     addAndMakeVisible (copyPatternButton);
+    copyPatternButton.setLookAndFeel (&compactBtnLAF);
     copyPatternButton.setButtonText ("COPY >");
     copyPatternButton.setTooltip ("Copy current pattern & paste to next pattern");
-    copyPatternButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffe67e22));
-    copyPatternButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+    copyPatternButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff2b323b));
+    copyPatternButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xfff59e0b));
     copyPatternButton.onClick = [this] {
         audioProcessor.copyToNextPattern();
         updatePatternButtonStates();
@@ -1292,8 +1340,8 @@ void ExtasisRhythmEditor::updatePatternButtonStates()
     activePatternButton = curPat;
     for (int b = 0; b < 8; ++b) {
         bool isActive = (b == curPat);
-        patternButtons[b].setColour (juce::TextButton::buttonColourId, isActive ? juce::Colour (0xff00d2ff) : juce::Colour (0xff222222));
-        patternButtons[b].setColour (juce::TextButton::textColourOffId, isActive ? juce::Colours::black : juce::Colours::white);
+        patternButtons[b].setColour (juce::TextButton::buttonColourId, isActive ? juce::Colour (0xff00d2ff) : juce::Colour (0xff252b30));
+        patternButtons[b].setColour (juce::TextButton::textColourOffId, isActive ? juce::Colour (0xff091422) : juce::Colour (0xffd1d5db));
     }
 }
 

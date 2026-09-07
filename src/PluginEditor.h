@@ -238,21 +238,46 @@ public:
     }
 
     void paint(juce::Graphics& g) override {
-        g.setColour(isHovered ? juce::Colour(0xff3d4446) : juce::Colour(0xff2d3436));
-        g.fillRoundedRectangle(getLocalBounds().toFloat(), 4.0f);
+        auto bounds = getLocalBounds().toFloat();
         
-        g.setColour(isDragging ? juce::Colours::yellow : juce::Colour(0xff00d2ff));
-        g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1.0f), 4.0f, 1.5f);
+        // Background: sleek hardware dark slate with responsive states
+        juce::Colour bgCol = isDragging ? juce::Colour (0xff122332) 
+                                       : (isHovered ? juce::Colour (0xff1c2630) : juce::Colour (0xff151b22));
+        g.setColour (bgCol);
+        g.fillRoundedRectangle (bounds, 4.0f);
         
-        g.setFont(juce::FontOptions (10.0f, juce::Font::bold));
-        g.setColour(juce::Colours::white);
-        g.drawText("〰️ DRAG WAV", getLocalBounds(), juce::Justification::centred);
+        // Crisp glowing border
+        juce::Colour borderCol = isDragging ? juce::Colour (0xffffcc00) 
+                                           : (isHovered ? juce::Colour (0xff38bdf8) : juce::Colour (0xff00d2ff).withAlpha (0.75f));
+        g.setColour (borderCol);
+        g.drawRoundedRectangle (bounds.reduced (0.5f), 4.0f, 1.2f);
+        
+        // Draw crisp 5-bar vector audio waveform icon on the left (replaces broken emoji character)
+        float waveStartX = bounds.getX() + 9.0f;
+        float waveCenterY = bounds.getCentreY();
+        float barHeights[5] = { 5.0f, 10.0f, 15.0f, 9.0f, 6.0f };
+        
+        juce::Colour waveCol = isDragging ? juce::Colour (0xffffcc00) 
+                                          : (isHovered ? juce::Colour (0xff38bdf8) : juce::Colour (0xff00d2ff));
+        g.setColour (waveCol);
+        for (int i = 0; i < 5; ++i) {
+            float bx = waveStartX + (float)i * 3.5f;
+            float bh = barHeights[i];
+            g.fillRoundedRectangle (bx, waveCenterY - bh * 0.5f, 2.0f, bh, 1.0f);
+        }
+        
+        // Clean, bold typography
+        g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
+        g.setColour (juce::Colours::white);
+        float textX = waveStartX + 20.0f;
+        float textW = bounds.getWidth() - (textX - bounds.getX()) - 4.0f;
+        g.drawText ("DRAG WAV", (int)textX, (int)bounds.getY(), (int)textW, (int)bounds.getHeight(), juce::Justification::centred);
     }
 
     void mouseEnter(const juce::MouseEvent&) override { isHovered = true; repaint(); }
     void mouseExit(const juce::MouseEvent&) override { isHovered = false; repaint(); }
     
-    void mouseDown(const juce::MouseEvent& e) override {
+    void mouseDown(const juce::MouseEvent&) override {
         isDragging = false;
     }
 
