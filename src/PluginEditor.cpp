@@ -234,6 +234,7 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     logoImage = juce::ImageFileFormat::loadFrom (BinaryData::logo_png, (size_t) BinaryData::logo_pngSize);
 
     addAndMakeVisible (playButton); 
+    playButton.setLookAndFeel (&compactBtnLAF);
     playButton.setButtonText ("PLAY"); 
     playButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffb0b0b0)); 
     playButton.setColour (juce::TextButton::textColourOffId, juce::Colours::black);
@@ -249,6 +250,7 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     };
 
     addAndMakeVisible (seqToggleViewButton);
+    seqToggleViewButton.setLookAndFeel (&compactBtnLAF);
     seqToggleViewButton.setButtonText ("SEQ");
     seqToggleViewButton.setClickingTogglesState (true);
     seqToggleViewButton.setToggleState (true, juce::dontSendNotification);
@@ -276,6 +278,7 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     };
 
     addAndMakeVisible (stopButton); 
+    stopButton.setLookAndFeel (&compactBtnLAF);
     stopButton.setButtonText ("STOP"); 
     stopButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffb0b0b0)); 
     stopButton.setColour (juce::TextButton::textColourOffId, juce::Colours::black);
@@ -424,10 +427,16 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     collectSaveButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
     collectSaveButton.setTooltip ("Collect all custom samples into a new permanent Kit folder"); 
     
-    resetButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffff6600)); 
+    resetButton.setButtonText ("RESET");
+    resetButton.setLookAndFeel (&compactBtnLAF);
+    resetButton.setTooltip ("Reset all parameters & mixer to defaults");
+    resetButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffd35400)); 
     resetButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white); 
     
-    seqResetButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff9b59b6)); 
+    seqResetButton.setButtonText ("SEQ RST");
+    seqResetButton.setLookAndFeel (&compactBtnLAF);
+    seqResetButton.setTooltip ("Clear all sequencer steps and reset track lengths");
+    seqResetButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff7c3aed)); 
     seqResetButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
 
     resetButton.onClick = [this] { 
@@ -561,6 +570,7 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     };
 
     addAndMakeVisible (randomKitButton); 
+    randomKitButton.setLookAndFeel (&compactBtnLAF);
     randomKitButton.setButtonText ("RANDOM KIT"); 
     randomKitButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff8e44ad)); 
     randomKitButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
