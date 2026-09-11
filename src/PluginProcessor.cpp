@@ -1072,6 +1072,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     if (isOfflineRendering.load()) {
         currentHostPlaying = true;
         hasHostTime = true;
+        currentHostBpm = offlineBpm.load();
         ppqPosition = offlinePpqPosition.load();
     } else if (auto* playHead = getPlayHead()) {
         if (auto pos = playHead->getPosition()) {
@@ -1147,6 +1148,12 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     bool anySolo = false;
 
     for (int i = 0; i < 12; ++i) {
+        chanMute[i] = cachedParams.chanMute[i]->load() > 0.5f;
+        chanSolo[i] = cachedParams.chanSolo[i]->load() > 0.5f;
+        if (chanSolo[i]) anySolo = true;
+    }
+
+    for (int i = 0; i < 12; ++i) {
         juce::String ch = juce::String(i);
         volSmoother[i].setTargetValue(cachedParams.chanGain[i]->load());
         panSmoother[i].setTargetValue(cachedParams.chanPan[i]->load());
@@ -1154,11 +1161,9 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
         chanSSend[i] = cachedParams.chanSSend[i]->load(); chanDSend[i] = cachedParams.chanDSend[i]->load();
         chanAtt[i] = cachedParams.chanAttack[i]->load(); chanDec[i] = cachedParams.chanDecay[i]->load();
-        chanMute[i] = cachedParams.chanMute[i]->load() > 0.5f; chanSolo[i] = cachedParams.chanSolo[i]->load() > 0.5f;
         chanEnv[i]  = cachedParams.chanEnv[i]->load() > 0.5f;
         chanTriplet[i] = cachedParams.chanTriplet[i]->load() > 0.5f;
         chanFit[i] = cachedParams.chanFit[i]->load() > 0.5f;
-        if (chanSolo[i]) anySolo = true;
         
         float toneVal = cachedParams.chanTone[i]->load();
         if (toneVal < 0.0f) {
@@ -1833,10 +1838,16 @@ void ExtasisRhythmProcessor::saveCustomKit(const juce::String& kitName) {
 
 bool ExtasisRhythmProcessor::renderOfflineLoop(const juce::File& outputFile) {
     double renderSampleRate = getSampleRate() > 0.0 ? getSampleRate() : 44100.0;
-    double currentBpm = hostBpm.load();
-    if (currentBpm <= 0) currentBpm = 120.0;
+    double currentBpm = 120.0;
+    if (isSyncedToHost.load() && hostBpm.load() > 0.0) {
+        currentBpm = hostBpm.load();
+    } else if (cachedParams.bpm != nullptr) {
+        currentBpm = cachedParams.bpm->load();
+    }
+    if (currentBpm <= 20.0 || currentBpm > 400.0) currentBpm = 120.0;
+    offlineBpm.store(currentBpm);
     
-    // 32 steps = 8 beats (assuming 16th notes)
+    // 32 steps = 8 beats (assuming 16th notes: 4 steps per beat)
     double totalSeconds = 8.0 * (60.0 / currentBpm);
     int totalSamples = (int)(totalSeconds * renderSampleRate);
     
@@ -1845,19 +1856,24 @@ bool ExtasisRhythmProcessor::renderOfflineLoop(const juce::File& outputFile) {
 
     // Save state
     bool wasPlaying = hostPlaying.load();
-    double oldBpm = hostBpm.load();
     
     // Reset state for clean bounce
     isBouncingThread = true;
     isOfflineRendering.store(true);
     offlinePpqPosition.store(0.0);
     hostPlaying = true;
-    for (int i=0; i<12; ++i) {
+    for (int i = 0; i < 12; ++i) {
         samplePositions[i] = -1.0;
         samplePositionsOld[i] = -1.0;
         currentMappedStep[i] = 0;
         flashCounters[i] = 0;
+        lastSubStep[i] = -1;
+        lastRatchetTick[i] = -1;
+        channelStepSemitones[i] = 0.0f;
     }
+    lastFillSubStep = -1;
+    fillSeqPos = 0;
+    internalElapsedBeats = 0.0;
     
     int blockSize = 512;
     int samplesRendered = 0;
@@ -1875,19 +1891,43 @@ bool ExtasisRhythmProcessor::renderOfflineLoop(const juce::File& outputFile) {
             renderBuffer.copyFrom(ch, samplesRendered, tempBuffer, ch, 0, numToRender);
         }
         samplesRendered += numToRender;
+
+        double beatsRendered = ((double)numToRender / renderSampleRate) * (currentBpm / 60.0);
+        offlinePpqPosition.store(offlinePpqPosition.load() + beatsRendered);
     }
     
+    // Normalize / safety gain to prevent digital clipping in 24-bit PCM
+    float maxPeak = 0.0f;
+    for (int ch = 0; ch < 2; ++ch) {
+        float p = renderBuffer.getMagnitude(ch, 0, totalSamples);
+        if (p > maxPeak) maxPeak = p;
+    }
+    if (maxPeak > 0.98f) {
+        renderBuffer.applyGain(0.95f / maxPeak);
+    }
+
     // Restore state
     isOfflineRendering.store(false);
     isBouncingThread = false;
     hostPlaying = wasPlaying;
+    offlinePpqPosition.store(0.0);
+    for (int i = 0; i < 12; ++i) {
+        lastSubStep[i] = -1;
+        lastRatchetTick[i] = -1;
+    }
+    lastFillSubStep = -1;
     
     // Write to file
     if (outputFile.existsAsFile()) outputFile.deleteFile();
     
     juce::WavAudioFormat wavFormat;
+    auto* stream = new juce::FileOutputStream(outputFile);
+    if (!stream->openedOk()) {
+        delete stream;
+        return false;
+    }
     std::unique_ptr<juce::AudioFormatWriter> writer(
-        wavFormat.createWriterFor(new juce::FileOutputStream(outputFile), renderSampleRate, 2, 24, {}, 0)
+        wavFormat.createWriterFor(stream, renderSampleRate, 2, 24, {}, 0)
     );
     
     if (writer != nullptr) {

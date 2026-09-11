@@ -940,10 +940,10 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
         soloButtons[i].setLookAndFeel (&compactBtnLAF);
         soloButtons[i].setButtonText ("S"); 
         soloButtons[i].setClickingTogglesState (true); 
-        soloButtons[i].setColour (juce::TextButton::buttonColourId, juce::Colour (0xffcccccc)); 
-        soloButtons[i].setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff2ecc71)); 
-        soloButtons[i].setColour (juce::TextButton::textColourOffId, juce::Colours::black); 
-        soloButtons[i].setColour (juce::TextButton::textColourOnId, juce::Colours::white); 
+        soloButtons[i].setColour (juce::TextButton::buttonColourId, juce::Colour (0xff252b30)); 
+        soloButtons[i].setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xfff1c40f)); 
+        soloButtons[i].setColour (juce::TextButton::textColourOffId, juce::Colour (0xffcccccc)); 
+        soloButtons[i].setColour (juce::TextButton::textColourOnId, juce::Colours::black); 
         soloAtts[i] = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (audioProcessor.apvts, "solo" + chStr, soloButtons[i]);
         
         addAndMakeVisible (envChannelButtons[i]); 
