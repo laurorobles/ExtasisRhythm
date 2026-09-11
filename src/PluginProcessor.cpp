@@ -24,7 +24,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ExtasisRhythmProcessor::crea
     params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("masterLpfRes", 1), "LRes", 0.1f, 10.0f, 0.71f));
     
     params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("pcmBits", 1), "Bits", 4.0f, 16.0f, 16.0f));
-    params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("pcmRate", 1), "Rate", 6.25f, 100.0f, 25.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("pcmRate", 1), "Rate", 6.25f, 100.0f, 100.0f));
     
     params.push_back (std::make_unique<juce::AudioParameterBool> (juce::ParameterID ("flangerOn", 1), "FlangOn", false));
     params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("flangerRate", 1), "FRate", juce::NormalisableRange<float>(0.05f, 15.0f, 0.01f, 0.5f), 0.40f));
@@ -719,7 +719,7 @@ void ExtasisRhythmProcessor::resetAllParameters() {
     setParam ("isPlaying", 0.0f); setParam ("bpm", 120.0f); setParam ("masterVolume", 1.0f); setParam ("masterClipper", 1.0f);
     setParam ("masterAnalog", 0.0f); setParam ("masterVinyl", 0.0f); setParam ("pumpOn", 0.0f); setParam ("masterAnti", 0.0f); setParam ("masterLimiter", 1.0f);
     setParam ("masterHpf", 20.0f); setParam ("masterHpfRes", 0.71f);
-    setParam ("masterLpf", 20000.0f); setParam ("masterLpfRes", 0.71f); setParam ("pcmBits", 16.0f); setParam ("pcmRate", 25.0f);
+    setParam ("masterLpf", 20000.0f); setParam ("masterLpfRes", 0.71f); setParam ("pcmBits", 16.0f); setParam ("pcmRate", 100.0f);
     setParam ("flangerOn", 0.0f); setParam ("flangerRate", 0.40f); setParam ("flangerFeedback", 0.0f);
     setParam ("chorusOn", 0.0f); setParam ("chorusRate", 1.5f); setParam ("chorusDepth", 0.5f);
     setParam ("transientAttack", 0.0f); setParam ("transientSustain", 0.0f);
@@ -1440,16 +1440,20 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             if (isKick) {
                 l = kickHpfL.processSample(0, l); r = kickHpfR.processSample(0, r);
                 l = kickLpfL.processSample(0, l); r = kickLpfR.processSample(0, r);
-                float ratGainFactor = 1.0f + (std::pow(ratDist, 2.0f) * 100.0f);
-                l = fastTanh(l * ratGainFactor + 0.1f) - 0.0996f; 
-                r = fastTanh(r * ratGainFactor + 0.1f) - 0.0996f;
+                if (ratDist > 0.001f) {
+                    float ratGainFactor = 1.0f + (std::pow(ratDist, 2.0f) * 100.0f);
+                    l = fastTanh(l * ratGainFactor + 0.1f) - 0.0996f; 
+                    r = fastTanh(r * ratGainFactor + 0.1f) - 0.0996f;
+                }
                 l = kickRatLpfL.processSample(0, l) * ratVol; r = kickRatLpfR.processSample(0, r) * ratVol;
             } else {
                 l = otherHpfL.processSample(0, l); r = otherHpfR.processSample(0, r);
                 l = otherLpfL.processSample(0, l); r = otherLpfR.processSample(0, r);
-                float ratGainFactor = 1.0f + (std::pow(ratDist, 2.0f) * 100.0f);
-                l = fastTanh(l * ratGainFactor + 0.1f) - 0.0996f; 
-                r = fastTanh(r * ratGainFactor + 0.1f) - 0.0996f;
+                if (ratDist > 0.001f) {
+                    float ratGainFactor = 1.0f + (std::pow(ratDist, 2.0f) * 100.0f);
+                    l = fastTanh(l * ratGainFactor + 0.1f) - 0.0996f; 
+                    r = fastTanh(r * ratGainFactor + 0.1f) - 0.0996f;
+                }
                 l = otherRatLpfL.processSample(0, l) * ratVol; r = otherRatLpfR.processSample(0, r) * ratVol;
             }
         };
@@ -1874,6 +1878,26 @@ bool ExtasisRhythmProcessor::renderOfflineLoop(const juce::File& outputFile) {
     lastFillSubStep = -1;
     fillSeqPos = 0;
     internalElapsedBeats = 0.0;
+    pcmHoldL = 0.0f;
+    pcmHoldR = 0.0f;
+    pcmPhase = 0.0f;
+    pumpEnvelope = 0.0f;
+    if (delayBufferLength > 0) {
+        std::fill(delayBufferL.begin(), delayBufferL.end(), 0.0f);
+        std::fill(delayBufferR.begin(), delayBufferR.end(), 0.0f);
+    }
+    if (!flangerBufferL.empty()) {
+        std::fill(flangerBufferL.begin(), flangerBufferL.end(), 0.0f);
+        std::fill(flangerBufferR.begin(), flangerBufferR.end(), 0.0f);
+    }
+    if (!chorusBufferL.empty()) {
+        std::fill(chorusBufferL.begin(), chorusBufferL.end(), 0.0f);
+        std::fill(chorusBufferR.begin(), chorusBufferR.end(), 0.0f);
+    }
+    for (int j = 0; j < 3; ++j) {
+        if (!springDelayL[j].empty()) std::fill(springDelayL[j].begin(), springDelayL[j].end(), 0.0f);
+        if (!springDelayR[j].empty()) std::fill(springDelayR[j].begin(), springDelayR[j].end(), 0.0f);
+    }
     
     int blockSize = 512;
     int samplesRendered = 0;
