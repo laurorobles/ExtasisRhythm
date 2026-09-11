@@ -1002,8 +1002,10 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         for (int i=0; i<12; ++i) localSamples[i] = sampleBuffers[i];
     }
 
-    buffer.clear(); 
-    if (getSampleRate() <= 0.0 || buffer.getNumChannels() == 0) return;
+    buffer.clear();
+    // Use offlineSampleRate when bouncing from the UI thread; getSampleRate() may be 0 or stale on that thread.
+    const double sr = isOfflineRendering.load() ? offlineSampleRate.load() : getSampleRate();
+    if (sr <= 0.0 || buffer.getNumChannels() == 0) return;
 
     if (isOfflineRendering.load() && !isBouncingThread) {
         return; // Mutear el thread de audio real mientras el thread de UI renderiza
@@ -1011,7 +1013,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
     if (!isLicensedCached.load()) {
         int64_t currentElapsed = demoSamplesElapsed.load();
-        int64_t maxDemoSamples = (int64_t)(getSampleRate() * 600.0); 
+        int64_t maxDemoSamples = (int64_t)(sr * 600.0); 
         if (currentElapsed >= maxDemoSamples) {
             demoExpired.store (true);
             buffer.clear(); // MUTE THE AUDIO
@@ -1135,7 +1137,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         else beatFraction = 1.5f; 
         targetDelMs = beatMs * beatFraction;
     }
-    float targetDelSamples = (targetDelMs / 1000.0f) * (float)getSampleRate();
+    float targetDelSamples = (targetDelMs / 1000.0f) * (float)sr;
     float delFb = cachedParams.delayFb->load(); 
     float delModRate = cachedParams.delayModRate->load(); 
     float delModDepth = cachedParams.delayModDepth->load();
@@ -1224,10 +1226,10 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             chanPan[i] = panSmoother[i].getNextValue();
             currentMuteGain[i] = muteSmoother[i].getNextValue();
             float semitones = pitchSmoother[i].getNextValue();
-            chanPitch[i] = (float)(std::pow(2.0, (double)semitones / 12.0) * ((localSamples[i] && localSamples[i]->sampleRate > 0) ? (localSamples[i]->sampleRate / getSampleRate()) : 1.0));
+            chanPitch[i] = (float)(std::pow(2.0, (double)semitones / 12.0) * ((localSamples[i] && localSamples[i]->sampleRate > 0) ? (localSamples[i]->sampleRate / sr) : 1.0));
         }
 
-        double beatIncPerSample = (bpm / 60.0) / getSampleRate();
+        double beatIncPerSample = (bpm / 60.0) / sr;
         if (playing && !hasHostTime) internalElapsedBeats += beatIncPerSample;
         double exactBeats = hasHostTime ? (ppqPosition + ((double)s * beatIncPerSample)) : internalElapsedBeats;
 
@@ -1381,11 +1383,11 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                 float sL = getSampleHermite(i, pos, localSamples[i]->numSamples, 0);
                 float sR = localSamples[i]->numChannels > 1 ? getSampleHermite(i, pos, localSamples[i]->numSamples, 1) : sL;
 
-                float timeInSec = (float)pos / (float)getSampleRate();
+                float timeInSec = (float)pos / (float)sr;
                 if (timeInSec < chanAtt[i]) env = timeInSec / juce::jmax(0.0001f, chanAtt[i]);
                 else env = std::exp (-(timeInSec - chanAtt[i]) / juce::jmax(0.01f, chanDec[i]));
 
-                float antiClickFade = juce::jmin(1.0f, (float)pos / (0.003f * (float)getSampleRate()));
+                float antiClickFade = juce::jmin(1.0f, (float)pos / (0.003f * (float)sr));
 
                 float attackEnv = std::exp (-timeInSec / 0.015f); float sustainEnv = 1.0f - attackEnv;
                 float transMod = 1.0f + (transAtt * attackEnv * 1.3f) + (transSus * sustainEnv * 0.7f);
@@ -1444,8 +1446,10 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                     float ratGainFactor = 1.0f + (std::pow(ratDist, 2.0f) * 100.0f);
                     l = fastTanh(l * ratGainFactor + 0.1f) - 0.0996f; 
                     r = fastTanh(r * ratGainFactor + 0.1f) - 0.0996f;
+                    l = kickRatLpfL.processSample(0, l) * ratVol; r = kickRatLpfR.processSample(0, r) * ratVol;
+                } else {
+                    l = kickRatLpfL.processSample(0, l); r = kickRatLpfR.processSample(0, r);
                 }
-                l = kickRatLpfL.processSample(0, l) * ratVol; r = kickRatLpfR.processSample(0, r) * ratVol;
             } else {
                 l = otherHpfL.processSample(0, l); r = otherHpfR.processSample(0, r);
                 l = otherLpfL.processSample(0, l); r = otherLpfR.processSample(0, r);
@@ -1453,8 +1457,10 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                     float ratGainFactor = 1.0f + (std::pow(ratDist, 2.0f) * 100.0f);
                     l = fastTanh(l * ratGainFactor + 0.1f) - 0.0996f; 
                     r = fastTanh(r * ratGainFactor + 0.1f) - 0.0996f;
+                    l = otherRatLpfL.processSample(0, l) * ratVol; r = otherRatLpfR.processSample(0, r) * ratVol;
+                } else {
+                    l = otherRatLpfL.processSample(0, l); r = otherRatLpfR.processSample(0, r);
                 }
-                l = otherRatLpfL.processSample(0, l) * ratVol; r = otherRatLpfR.processSample(0, r) * ratVol;
             }
         };
 
@@ -1462,9 +1468,9 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         processMasterBusChain(otherL, otherR, false);
 
         if (flangerOn && !flangerBufferL.empty()) {
-            flangerLfoPhase += (flangerRate / (float)getSampleRate()); if (flangerLfoPhase >= 1.0f) flangerLfoPhase -= 1.0f;
+            flangerLfoPhase += (flangerRate / (float)sr); if (flangerLfoPhase >= 1.0f) flangerLfoPhase -= 1.0f;
             float lfo = std::sin(2.0f * (float)juce::MathConstants<double>::pi * flangerLfoPhase);
-            float delaySamples = (0.005f + 0.004f * (lfo + 1.0f)) * (float)getSampleRate();
+            float delaySamples = (0.005f + 0.004f * (lfo + 1.0f)) * (float)sr;
             
             float delayedL = readInterp(flangerBufferL, (float)flangerWritePos - delaySamples, (int)flangerBufferL.size());
             float delayedR = readInterp(flangerBufferR, (float)flangerWritePos - delaySamples, (int)flangerBufferR.size());
@@ -1477,7 +1483,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         }
 
         if (chorusOn && !chorusBufferL.empty()) {
-            chorusLfoPhase += (chorusRate / (float)getSampleRate()); 
+            chorusLfoPhase += (chorusRate / (float)sr); 
             if (chorusLfoPhase >= 1.0f) chorusLfoPhase -= 1.0f;
             
             float lfoL = std::sin(2.0f * (float)juce::MathConstants<double>::pi * chorusLfoPhase);
@@ -1486,8 +1492,8 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             float maxModMs = 0.001f + chorusDepth * 0.007f; 
             float baseDelMs = 0.012f; 
             
-            float delSamplesL = (baseDelMs + maxModMs * lfoL) * (float)getSampleRate();
-            float delSamplesR = (baseDelMs + maxModMs * lfoR) * (float)getSampleRate();
+            float delSamplesL = (baseDelMs + maxModMs * lfoL) * (float)sr;
+            float delSamplesR = (baseDelMs + maxModMs * lfoR) * (float)sr;
 
             int cBufSize = (int)chorusBufferL.size();
             
@@ -1521,7 +1527,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         }
 
         if (delayBufferLength > 0) {
-            delayLfoPhase += (delModRate / (float)getSampleRate()); 
+            delayLfoPhase += (delModRate / (float)sr); 
             if (delayLfoPhase >= 1.0f) delayLfoPhase -= 1.0f;
             float lfoVal = std::sin(2.0f * (float)juce::MathConstants<double>::pi * delayLfoPhase);
             float effectiveDelSamples = juce::jlimit(1.0f, (float)(delayBufferLength - 4), smoothedDelayTime + (lfoVal * delModDepth * 50.0f));
@@ -1551,7 +1557,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             mixedL += dOutL; mixedR += dOutR;
         }
 
-        if (pcmBits < 16.0f || pcmRateVal < 100.0f) {
+        if (pcmBits < 15.99f || pcmRateVal < 99.9f) {
             float stepSize = 100.0f / juce::jmax(1.0f, pcmRateVal); 
             pcmPhase += 1.0f;
             if (pcmPhase >= stepSize) {
@@ -1626,7 +1632,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
     auto endTime = juce::Time::getHighResolutionTicks();
     double elapsedSeconds = juce::Time::highResolutionTicksToSeconds(endTime - startTime);
-    double blockDuration = (double)buffer.getNumSamples() / getSampleRate();
+    double blockDuration = (double)buffer.getNumSamples() / sr;
     if (blockDuration > 0.0) {
         float instantLoad = (float)(elapsedSeconds / blockDuration) * 100.0f;
         float prev = cpuLoad.load();
@@ -1862,6 +1868,7 @@ bool ExtasisRhythmProcessor::renderOfflineLoop(const juce::File& outputFile) {
     bool wasPlaying = hostPlaying.load();
     
     // Reset state for clean bounce
+    offlineSampleRate.store(renderSampleRate);  // CRITICAL: processBlock reads this instead of getSampleRate()
     isBouncingThread = true;
     isOfflineRendering.store(true);
     offlinePpqPosition.store(0.0);

@@ -99,6 +99,7 @@ public:
     std::atomic<bool> isOfflineRendering { false };
     std::atomic<double> offlinePpqPosition { 0.0 };
     std::atomic<double> offlineBpm { 120.0 };
+    std::atomic<double> offlineSampleRate { 44100.0 };
     std::atomic<double> hostBpm { 120.0 };
 
     std::atomic<float> cpuLoad { 0.0f };
