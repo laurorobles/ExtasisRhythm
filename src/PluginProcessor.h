@@ -159,6 +159,7 @@ private:
      
     SampleBuffer::Ptr sampleBuffers[12];
     juce::SpinLock pointerLock;
+    juce::SpinLock renderLock;
     juce::dsp::StateVariableTPTFilter<float> kickHpfL, kickHpfR, otherHpfL, otherHpfR;
     juce::dsp::StateVariableTPTFilter<float> kickLpfL, kickLpfR, otherLpfL, otherLpfR;
     juce::dsp::StateVariableTPTFilter<float> kickRatLpfL, kickRatLpfR, otherRatLpfL, otherRatLpfR;

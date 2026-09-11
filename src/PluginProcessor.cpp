@@ -1011,6 +1011,8 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         return; // Mutear el thread de audio real mientras el thread de UI renderiza
     }
 
+    juce::SpinLock::ScopedLockType renderSl(renderLock);
+
     if (!isLicensedCached.load()) {
         int64_t currentElapsed = demoSamplesElapsed.load();
         int64_t maxDemoSamples = (int64_t)(sr * 600.0); 
@@ -1871,6 +1873,19 @@ bool ExtasisRhythmProcessor::renderOfflineLoop(const juce::File& outputFile) {
     offlineSampleRate.store(renderSampleRate);  // CRITICAL: processBlock reads this instead of getSampleRate()
     isBouncingThread = true;
     isOfflineRendering.store(true);
+    
+    // Wait for the audio thread to exit processBlock to prevent data races
+    { juce::SpinLock::ScopedLockType sl(renderLock); }
+
+    // CRITICAL: Reset all filters to clear any lingering NaNs from race conditions
+    kickHpfL.reset(); kickHpfR.reset(); otherHpfL.reset(); otherHpfR.reset();
+    kickLpfL.reset(); kickLpfR.reset(); otherLpfL.reset(); otherLpfR.reset();
+    kickRatLpfL.reset(); kickRatLpfR.reset(); otherRatLpfL.reset(); otherRatLpfR.reset();
+    delayFeedbackLpfL.reset(); delayFeedbackLpfR.reset();
+    springToneFilterL.reset(); springToneFilterR.reset();
+    for (int i = 0; i < 3; ++i) { springApL[i].reset(); springApR[i].reset(); }
+    for (int i = 0; i < 12; ++i) { channelToneFilters[i].reset(); envFilterL[i].reset(); envFilterR[i].reset(); }
+
     offlinePpqPosition.store(0.0);
     hostPlaying = true;
     for (int i = 0; i < 12; ++i) {
