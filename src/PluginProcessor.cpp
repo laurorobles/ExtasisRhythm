@@ -1622,6 +1622,9 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         mixedL *= 2.0f;
         mixedR *= 2.0f;
 
+        if (std::isnan(mixedL) || std::isinf(mixedL)) mixedL = 0.0f;
+        if (std::isnan(mixedR) || std::isinf(mixedR)) mixedR = 0.0f;
+
         if (masterL != nullptr) masterL[s] = mixedL; 
         if (masterR != nullptr) masterR[s] = mixedR;
     }
