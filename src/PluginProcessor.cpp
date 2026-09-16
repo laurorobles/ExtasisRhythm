@@ -336,6 +336,9 @@ void ExtasisRhythmProcessor::initializeParameterPointers()
     cachedParams.fillFit = apvts.getRawParameterValue ("fillFit");
 }
 
+#ifndef JucePlugin_Name
+#define JucePlugin_Name "ExtasisRhythm"
+#endif
 const juce::String ExtasisRhythmProcessor::getName() const { return JucePlugin_Name; }
 bool ExtasisRhythmProcessor::acceptsMidi() const { return true; }
 bool ExtasisRhythmProcessor::producesMidi() const { return true; }
@@ -995,7 +998,8 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     
     juce::MidiBuffer incomingMidi;
     incomingMidi.addEvents (midi, 0, buffer.getNumSamples(), 0);
-    midi.clear();
+    midi.clear(); // midi is the host output buffer for this block
+
     SampleBuffer::Ptr localSamples[12];
     {
         juce::SpinLock::ScopedLockType sl(pointerLock);
@@ -1055,19 +1059,22 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     
     for (int i = 0; i < 12; ++i) { int c = flashCounters[i].load(); if (c > 0) flashCounters[i] = c - 1; }
     
-    for (const auto meta : incomingMidi) { 
-        auto msg = meta.getMessage(); 
-        int ch = getChannelForMidiNote (msg.getNoteNumber());
-        if (ch >= 0 && ch < 12) {
-            if (msg.isNoteOn()) {
-                triggerChannel (ch, msg.getFloatVelocity());
-                juce::MidiMessage outMsg = msg;
-                outMsg.setChannel (ch + 1);
-                midi.addEvent (outMsg, meta.samplePosition);
-            } else if (msg.isNoteOff()) {
-                juce::MidiMessage outMsg = msg;
-                outMsg.setChannel (ch + 1);
-                midi.addEvent (outMsg, meta.samplePosition);
+    // Process incoming external MIDI only when NOT rendering offline (or if explicit note triggers are fed)
+    if (!isOfflineRendering.load()) {
+        for (const auto meta : incomingMidi) { 
+            auto msg = meta.getMessage(); 
+            int ch = getChannelForMidiNote (msg.getNoteNumber());
+            if (ch >= 0 && ch < 12) {
+                if (msg.isNoteOn()) {
+                    triggerChannel (ch, msg.getFloatVelocity());
+                    juce::MidiMessage outMsg = msg;
+                    outMsg.setChannel (ch + 1);
+                    midi.addEvent (outMsg, meta.samplePosition);
+                } else if (msg.isNoteOff()) {
+                    juce::MidiMessage outMsg = msg;
+                    outMsg.setChannel (ch + 1);
+                    midi.addEvent (outMsg, meta.samplePosition);
+                }
             }
         }
     }
@@ -1934,7 +1941,8 @@ bool ExtasisRhythmProcessor::renderOfflineLoop(const juce::File& outputFile) {
         juce::AudioBuffer<float> tempBuffer(2, numToRender);
         tempBuffer.clear();
         
-        processBlock(tempBuffer, dummyMidi);
+        juce::MidiBuffer blockMidi;
+        processBlock(tempBuffer, blockMidi);
         
         for (int ch = 0; ch < 2; ++ch) {
             renderBuffer.copyFrom(ch, samplesRendered, tempBuffer, ch, 0, numToRender);
