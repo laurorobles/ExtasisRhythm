@@ -22,10 +22,29 @@ public:
 #endif
     }
 
-    // Validates a serial key in format "EXTR-XXXX-XXXX-XXXX-XXXX"
+    // Validates a serial key in format "EXTR-XXXX-XXXX-XXXX-XXXX" OR Gumroad UUID "XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX"
     static bool validateSerial (juce::String serialKey)
     {
         serialKey = serialKey.trim().toUpperCase().removeCharacters ("- \t\r\n");
+
+        // 1. Gumroad License Key format (32 hex characters: 8-8-8-8 or UUID)
+        if (serialKey.length() == 32)
+        {
+            bool allHex = true;
+            for (int i = 0; i < serialKey.length(); ++i)
+            {
+                auto c = serialKey[i];
+                if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F')))
+                {
+                    allHex = false;
+                    break;
+                }
+            }
+            if (allHex)
+                return true;
+        }
+
+        // 2. Custom Extasis format (EXTR-XXXX-XXXX-XXXX-XXXX)
         if (serialKey.startsWith ("EXTR"))
             serialKey = serialKey.substring (4);
 

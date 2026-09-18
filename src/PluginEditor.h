@@ -133,7 +133,7 @@ public:
         licenseInput.setMultiLine (false);
         licenseInput.setFont (juce::FontOptions (13.0f, juce::Font::bold));
         licenseInput.setJustification (juce::Justification::centred);
-        licenseInput.setTextToShowWhenEmpty ("EXTR-XXXX-XXXX-XXXX-XXXX", juce::Colour(0xff718093));
+        licenseInput.setTextToShowWhenEmpty ("Paste your Gumroad License Key here", juce::Colour(0xff718093));
         licenseInput.setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff14171a));
         licenseInput.setColour (juce::TextEditor::textColourId, juce::Colours::white);
         licenseInput.setColour (juce::TextEditor::outlineColourId, juce::Colour (0xff00d2ff));
@@ -156,16 +156,17 @@ public:
         };
 
         addAndMakeVisible (statusLabel);
-        statusLabel.setFont (juce::FontOptions (11.5f, juce::Font::bold));
+        statusLabel.setFont (juce::FontOptions (12.0f, juce::Font::bold));
         statusLabel.setJustificationType (juce::Justification::centred);
 
         addAndMakeVisible (gumroadLinkBtn);
         gumroadLinkBtn.setColour (juce::HyperlinkButton::textColourId, juce::Colour (0xff00d2ff));
+        gumroadLinkBtn.setFont (juce::FontOptions (11.0f, juce::Font::underlined), false);
     }
 
     void paint (juce::Graphics& g) override
     {
-        g.fillAll (juce::Colour (0xee0f141a));
+        g.fillAll (juce::Colours::black.withAlpha (0.75f));
 
         int modalW = 500;
         int modalH = 260;
@@ -199,8 +200,8 @@ public:
 
         g.setFont (juce::FontOptions (11.5f, isExpired ? juce::Font::bold : juce::Font::plain));
         g.setColour (isExpired ? juce::Colour (0xffff6b6b) : juce::Colour (0xffc8d6e5));
-        g.drawText (isExpired ? "Demo evaluation period has expired (10 minutes).\nEnter your license key to unlock and continue making music:"
-                              : "Please enter your 16-character license key to unlock the full version:",
+        g.drawText (isExpired ? "Demo evaluation period has expired (10 minutes).\nEnter your Gumroad license key to unlock and continue making music:"
+                              : "Please enter your Gumroad license key to unlock the full version:",
                     modalX + 20, modalY + 54, modalW - 40, 26, juce::Justification::centred);
     }
 
