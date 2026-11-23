@@ -1,5 +1,4 @@
 #include <algorithm>
-#include "LicenseManager.h"
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include <cmath>
@@ -406,9 +405,6 @@ void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
     currentSamplesPerBlock = bs;
     lastHostStep = -1; internalElapsedBeats = 0.0; lastFillSubStep = -1;
     
-    updateLicenseStatus();
-    demoSamplesElapsed.store (0);
-    
     pumpEnvelope = 0.0f;
     pcmHoldL = 0.0f;
     pcmHoldR = 0.0f;
@@ -441,6 +437,11 @@ void ExtasisRhythmProcessor::prepareToPlay(double sr, int bs) {
 
     kickRatLpfL.prepare(spec); kickRatLpfR.prepare(spec); kickRatLpfL.setType(juce::dsp::StateVariableTPTFilterType::lowpass); kickRatLpfR.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
     otherRatLpfL.prepare(spec); otherRatLpfR.prepare(spec); otherRatLpfL.setType(juce::dsp::StateVariableTPTFilterType::lowpass); otherRatLpfR.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+
+    vinylHpfL.prepare(spec); vinylHpfR.prepare(spec);
+    vinylHpfL.setType(juce::dsp::StateVariableTPTFilterType::highpass); vinylHpfR.setType(juce::dsp::StateVariableTPTFilterType::highpass);
+    vinylHpfL.setCutoffFrequency(55.0f); vinylHpfR.setCutoffFrequency(55.0f);
+    vinylHpfL.setResonance(0.707f); vinylHpfR.setResonance(0.707f);
 
     delayFeedbackLpfL.prepare(spec); delayFeedbackLpfR.prepare(spec); delayFeedbackLpfL.setType(juce::dsp::StateVariableTPTFilterType::lowpass); delayFeedbackLpfR.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
     delayFeedbackLpfL.setCutoffFrequency(8000.0f); delayFeedbackLpfR.setCutoffFrequency(8000.0f);
@@ -502,70 +503,97 @@ juce::StringArray ExtasisRhythmProcessor::getVariantsForChannel(int folderIndex,
     return results;
 }
 
-void ExtasisRhythmProcessor::loadSampleForChannel(int ch, int folderIndex, const juce::String& fileName) {
-    if (ch < 0 || ch >= 12 || drumFolders.isEmpty() || folderIndex >= drumFolders.size()) return;
-    juce::File sample = drumFolders[folderIndex].getChildFile(fileName);
-    if (sample.existsAsFile()) {
-        auto* reader = formatManager.createReaderFor(sample);
-        if (reader) {
-            int numSamps = (int) reader->lengthInSamples;
-            double fileSr = reader->sampleRate;
-            juce::AudioBuffer<float> tempBuffer ((int) reader->numChannels, numSamps);
-            reader->read(&tempBuffer, 0, numSamps, 0, true, true);
-            delete reader;
-            
-            float maxPeak = 0.0f;
-            for (int c = 0; c < tempBuffer.getNumChannels(); ++c) {
-                float channelPeak = tempBuffer.getMagnitude(c, 0, numSamps);
-                if (channelPeak > maxPeak) maxPeak = channelPeak;
-            }
-            
-            if (maxPeak > 0.0001f) {
-                float targetLevel = 0.707f; 
-                float gainMultiplier = targetLevel / maxPeak;
-                for (int c = 0; c < tempBuffer.getNumChannels(); ++c) {
-                    tempBuffer.applyGain(c, 0, numSamps, gainMultiplier);
+void ExtasisRhythmProcessor::loadSampleFromFile(int ch, const juce::File& sample, const juce::String& displayName) {
+    if (ch < 0 || ch >= 12 || !sample.existsAsFile()) return;
+    std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor(sample));
+    if (!reader) return;
+
+    int numSamps = (int) reader->lengthInSamples;
+    int numChans = (int) reader->numChannels;
+    if (numSamps <= 0 || numChans <= 0) return;
+
+    double fileSr = reader->sampleRate;
+    juce::AudioBuffer<float> tempBuffer (numChans, numSamps);
+    reader->read(&tempBuffer, 0, numSamps, 0, true, true);
+
+    float maxPeak = 0.0f;
+    for (int c = 0; c < numChans; ++c) {
+        float channelPeak = tempBuffer.getMagnitude(c, 0, numSamps);
+        if (channelPeak > maxPeak) maxPeak = channelPeak;
+    }
+
+    // Auto-trim leading silence so drum hits always start tightly on the transient
+    if (maxPeak > 0.0001f) {
+        const float trimThreshold = juce::jmax (0.002f, maxPeak * 0.005f); // ~-46 dB relative to peak
+        int firstActive = 0;
+        bool foundActive = false;
+
+        for (int s = 0; s < numSamps; ++s) {
+            for (int c = 0; c < numChans; ++c) {
+                if (std::abs (tempBuffer.getSample (c, s)) >= trimThreshold) {
+                    firstActive = s;
+                    foundActive = true;
+                    break;
                 }
             }
-            
-            auto newBuf = new SampleBuffer(std::move(tempBuffer), fileSr > 0.0 ? fileSr : 44100.0);
-            {
-                juce::SpinLock::ScopedLockType sl(pointerLock);
-                sampleBuffers[ch] = newBuf;
-            }
-            currentSampleName.set(ch, fileName);
+            if (foundActive) break;
         }
+
+        if (foundActive && firstActive > 0) {
+            // Walk back up to 32 samples (~0.7 ms) to find the previous zero-crossing
+            // so we preserve the full transient attack without clicks.
+            int trimStart = juce::jmax (0, firstActive - 16);
+            int searchMin = juce::jmax (0, firstActive - 32);
+            const float* ch0 = tempBuffer.getReadPointer (0);
+            for (int s = firstActive; s > searchMin; --s) {
+                if ((ch0[s] >= 0.0f && ch0[s - 1] <= 0.0f) || (ch0[s] <= 0.0f && ch0[s - 1] >= 0.0f)) {
+                    trimStart = s - 1;
+                    break;
+                }
+            }
+
+            if (trimStart > 0 && trimStart < numSamps) {
+                int newLen = numSamps - trimStart;
+                juce::AudioBuffer<float> trimmedBuffer (numChans, newLen);
+                for (int c = 0; c < numChans; ++c) {
+                    trimmedBuffer.copyFrom (c, 0, tempBuffer, c, trimStart, newLen);
+                }
+
+                // Micro fade-in (up to 16 samples) if trim point isn't near zero
+                if (std::abs (trimmedBuffer.getSample (0, 0)) > 0.01f) {
+                    int fadeLen = juce::jmin (16, newLen);
+                    for (int c = 0; c < numChans; ++c)
+                        trimmedBuffer.applyGainRamp (c, 0, fadeLen, 0.0f, 1.0f);
+                }
+
+                tempBuffer = std::move (trimmedBuffer);
+                numSamps = newLen;
+            }
+        }
+
+        // Normalize to -3 dBFS (0.707)
+        float gainMultiplier = 0.707f / maxPeak;
+        tempBuffer.applyGain (gainMultiplier);
     }
+
+    auto newBuf = new SampleBuffer(std::move(tempBuffer), fileSr > 0.0 ? fileSr : 44100.0);
+    {
+        juce::SpinLock::ScopedLockType sl(pointerLock);
+        sampleBuffers[ch] = newBuf;
+    }
+    currentSampleName.set(ch, displayName);
+}
+
+void ExtasisRhythmProcessor::loadSampleForChannel(int ch, int folderIndex, const juce::String& fileName) {
+    if (ch < 0 || ch >= 12 || drumFolders.isEmpty() || folderIndex < 0 || folderIndex >= drumFolders.size()) return;
+    juce::File sample = drumFolders[folderIndex].getChildFile(fileName);
+    loadSampleFromFile(ch, sample, fileName);
 }
 
 void ExtasisRhythmProcessor::loadSampleFromAbsolutePath(int ch, const juce::String& absolutePath) {
     if (ch < 0 || ch >= 12) return;
     juce::File sample(absolutePath);
-    if (sample.existsAsFile()) {
-        auto* reader = formatManager.createReaderFor(sample);
-        if (reader) {
-            int numSamps = (int) reader->lengthInSamples;
-            double fileSr = reader->sampleRate;
-            juce::AudioBuffer<float> tempBuffer ((int) reader->numChannels, numSamps);
-            reader->read(&tempBuffer, 0, numSamps, 0, true, true);
-            delete reader;
-            
-            float maxPeak = 0.0f;
-            for (int c = 0; c < tempBuffer.getNumChannels(); ++c) {
-                float channelPeak = tempBuffer.getMagnitude(c, 0, numSamps);
-                if (channelPeak > maxPeak) maxPeak = channelPeak;
-            }
-            if (maxPeak > 0.0001f) {
-                tempBuffer.applyGain(0.707f / maxPeak);
-            }
-            auto newBuf = new SampleBuffer(std::move(tempBuffer), fileSr > 0.0 ? fileSr : 44100.0);
-            {
-                juce::SpinLock::ScopedLockType sl(pointerLock);
-                sampleBuffers[ch] = newBuf;
-            }
-            currentSampleName.set(ch, sample.getFileName());
-        }
-    }
+    loadSampleFromFile(ch, sample, sample.getFileName());
 }
 
 void ExtasisRhythmProcessor::loadSmartSampleForChannel(int i, int kit) {
@@ -980,15 +1008,6 @@ void ExtasisRhythmProcessor::setStateInformation (const void* data, int sizeInBy
     }
 }
 
-void ExtasisRhythmProcessor::updateLicenseStatus()
-{
-    isLicensedCached.store (LicenseManager::isLicensed());
-    if (isLicensedCached.load())
-    {
-        demoExpired.store (false);
-    }
-}
-
 thread_local bool isBouncingThread = false;
 
 void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) {
@@ -1017,18 +1036,6 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
     juce::SpinLock::ScopedLockType renderSl(renderLock);
 
-    if (!isLicensedCached.load()) {
-        int64_t currentElapsed = demoSamplesElapsed.load();
-        int64_t maxDemoSamples = (int64_t)(sr * 600.0); 
-        if (currentElapsed >= maxDemoSamples) {
-            demoExpired.store (true);
-            buffer.clear(); // MUTE THE AUDIO
-            return;
-        } else {
-            demoSamplesElapsed.store (currentElapsed + buffer.getNumSamples());
-        }
-    }
-    
     float* stemWriteL[12] = { nullptr };
     float* stemWriteR[12] = { nullptr };
     bool stemEnabled[12] = { false };
@@ -1272,10 +1279,10 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                     mappedFillStep = (p2 < numFillSteps) ? p2 : cycleLen - p2;
                 } else mappedFillStep = phaseFill;
                 
-                fillSeqPos = juce::jlimit(0, 15, mappedFillStep);
+                fillSeqPos.store(juce::jlimit(0, 15, mappedFillStep));
             }
 
-            int safeFillIndex = juce::jlimit(0, 15, fillSeqPos);
+            int safeFillIndex = juce::jlimit(0, 15, fillSeqPos.load());
             int currentFillV = 0;
             if (cachedParams.fillStepParams[safeFillIndex] != nullptr) {
                 currentFillV = (int)(cachedParams.fillStepParams[safeFillIndex]->load() + 0.5f);
@@ -1456,8 +1463,6 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                     l = fastTanh(l * ratGainFactor + 0.1f) - 0.0996f; 
                     r = fastTanh(r * ratGainFactor + 0.1f) - 0.0996f;
                     l = kickRatLpfL.processSample(0, l) * ratVol; r = kickRatLpfR.processSample(0, r) * ratVol;
-                } else {
-                    l = kickRatLpfL.processSample(0, l); r = kickRatLpfR.processSample(0, r);
                 }
             } else {
                 l = otherHpfL.processSample(0, l); r = otherHpfR.processSample(0, r);
@@ -1467,8 +1472,6 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                     l = fastTanh(l * ratGainFactor + 0.1f) - 0.0996f; 
                     r = fastTanh(r * ratGainFactor + 0.1f) - 0.0996f;
                     l = otherRatLpfL.processSample(0, l) * ratVol; r = otherRatLpfR.processSample(0, r) * ratVol;
-                } else {
-                    l = otherRatLpfL.processSample(0, l); r = otherRatLpfR.processSample(0, r);
                 }
             }
         };
@@ -1517,8 +1520,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             otherR = juce::jlimit(-1.0f, 1.0f, 0.707f * (otherR + cDelayedR));
         }
 
-        float mixedL = kickL + otherL;
-        float mixedR = kickR + otherR;
+        float fxReturnL = 0.0f, fxReturnR = 0.0f;
 
         if (!springDelayL[0].empty()) {
             float feedback = 0.2f + springDec * 0.75f;
@@ -1532,7 +1534,7 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
                 springDelayL[j][springPos[j]] = fastTanh (apL); springDelayR[j][springPos[j]] = fastTanh (apR); springOutL += dL; springOutR += dR;
                 springPos[j] = (springPos[j] + 1) % springDelayL[j].size();
             }
-            mixedL += springOutL * 0.5f; mixedR += springOutR * 0.5f;
+            fxReturnL += springOutL * 0.5f; fxReturnR += springOutR * 0.5f;
         }
 
         if (delayBufferLength > 0) {
@@ -1563,8 +1565,33 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             delayBufferR[(size_t)writeP] = delaySendTotalR + fbR;
             
             delayWritePos = (writeP + 1) % delayBufferLength;
-            mixedL += dOutL; mixedR += dOutR;
+            fxReturnL += dOutL; fxReturnR += dOutR;
         }
+
+        float nonKickL = otherL + fxReturnL;
+        float nonKickR = otherR + fxReturnR;
+
+        // Kick-triggered sidechain PUMP: ducks non-kick channels & FX returns while keeping Kick punchy
+        if (pumpOn) {
+            float kickPeak = juce::jmax(std::abs(kickL), std::abs(kickR));
+            float attackCoef = 1.0f - std::exp(-1.0f / (0.002f * (float)sr));  // ~2 ms attack
+            float releaseCoef = 1.0f - std::exp(-1.0f / (0.140f * (float)sr)); // ~140 ms musical release
+            if (kickPeak > pumpEnvelope) {
+                pumpEnvelope += attackCoef * (kickPeak - pumpEnvelope);
+            } else {
+                pumpEnvelope += releaseCoef * (kickPeak - pumpEnvelope);
+            }
+
+            float thresholdLinear = juce::Decibels::decibelsToGain(pumpThr);
+            if (pumpEnvelope > thresholdLinear) {
+                float reduction = juce::jlimit(0.0f, 1.0f, 1.0f - (pumpAmt * (1.0f - (thresholdLinear / juce::jmax(0.0001f, pumpEnvelope)))));
+                nonKickL *= reduction;
+                nonKickR *= reduction;
+            }
+        }
+
+        float mixedL = kickL + nonKickL;
+        float mixedR = kickR + nonKickR;
 
         if (pcmBits < 15.99f || pcmRateVal < 99.9f) {
             float stepSize = 100.0f / juce::jmax(1.0f, pcmRateVal); 
@@ -1588,31 +1615,14 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         mixedL *= (mVol * 1.4125f); mixedR *= (mVol * 1.4125f);
         mixedL = fastTanh (mixedL / mClip) * mClip; mixedR = fastTanh (mixedR / mClip) * mClip;
 
-        if (pumpOn) {
-            float currentPeak = juce::jmax(std::abs(mixedL), std::abs(mixedR));
-            float attackCoef = 0.05f; 
-            float releaseCoef = 0.0003f;
-            if (currentPeak > pumpEnvelope) {
-                pumpEnvelope += attackCoef * (currentPeak - pumpEnvelope);
-            } else {
-                pumpEnvelope += releaseCoef * (currentPeak - pumpEnvelope);
-            }
-
-            float thresholdLinear = juce::Decibels::decibelsToGain(pumpThr);
-            if (pumpEnvelope > thresholdLinear) {
-                float reduction = 1.0f - (pumpAmt * (1.0f - (thresholdLinear / juce::jmax(0.0001f, pumpEnvelope))));
-                mixedL *= reduction; mixedR *= reduction;
-            }
-        }
-
         if (masterAnalog) {
             mixedL = fastTanh (mixedL * 1.25f) * 0.9f;
             mixedR = fastTanh (mixedR * 1.25f) * 0.9f;
         }
         if (masterVinyl) {
             mixedL *= 0.95f; mixedR *= 0.95f;
-            mixedL = otherHpfL.processSample(0, mixedL);
-            mixedR = otherHpfR.processSample(0, mixedR);
+            mixedL = vinylHpfL.processSample(0, mixedL);
+            mixedR = vinylHpfR.processSample(0, mixedR);
         }
 
         if (masterAnti) {
@@ -1620,14 +1630,14 @@ void ExtasisRhythmProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             mixedR = fastTanh (mixedR * 0.98f);
         }
 
+        mixedL *= 2.0f;
+        mixedR *= 2.0f;
+
         if (masterLimiter) {
             const float ceiling = 0.9772f; 
             if (std::abs(mixedL) > ceiling) mixedL = (mixedL > 0.0f ? ceiling : -ceiling);
             if (std::abs(mixedR) > ceiling) mixedR = (mixedR > 0.0f ? ceiling : -ceiling);
         }
-
-        mixedL *= 2.0f;
-        mixedR *= 2.0f;
 
         if (std::isnan(mixedL) || std::isinf(mixedL)) mixedL = 0.0f;
         if (std::isnan(mixedR) || std::isinf(mixedR)) mixedR = 0.0f;
@@ -1891,6 +1901,7 @@ bool ExtasisRhythmProcessor::renderOfflineLoop(const juce::File& outputFile) {
     kickHpfL.reset(); kickHpfR.reset(); otherHpfL.reset(); otherHpfR.reset();
     kickLpfL.reset(); kickLpfR.reset(); otherLpfL.reset(); otherLpfR.reset();
     kickRatLpfL.reset(); kickRatLpfR.reset(); otherRatLpfL.reset(); otherRatLpfR.reset();
+    vinylHpfL.reset(); vinylHpfR.reset();
     delayFeedbackLpfL.reset(); delayFeedbackLpfR.reset();
     springToneFilterL.reset(); springToneFilterR.reset();
     for (int i = 0; i < 3; ++i) { springApL[i].reset(); springApR[i].reset(); }
@@ -1933,8 +1944,6 @@ bool ExtasisRhythmProcessor::renderOfflineLoop(const juce::File& outputFile) {
     
     int blockSize = 512;
     int samplesRendered = 0;
-    
-    juce::MidiBuffer dummyMidi;
     
     while (samplesRendered < totalSamples) {
         int numToRender = std::min(blockSize, totalSamples - samplesRendered);

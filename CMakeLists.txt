@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(ExtasisRhythm VERSION 3.1.0)
+project(ExtasisRhythm VERSION 4.0.0)
 
 if(NOT TARGET juce::juce_audio_utils)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/JUCE/CMakeLists.txt")
@@ -59,21 +59,14 @@ target_compile_definitions(ExtasisRhythm PRIVATE
 
 # Enlazar la librería a tu VST3
 target_link_libraries(ExtasisRhythm PRIVATE
-    juce::juce_audio_utils
-    juce::juce_dsp
-    PUBLIC juce::juce_recommended_config_flags
-    PUBLIC juce::juce_recommended_lto_flags
-    PUBLIC juce::juce_recommended_warning_flags
-)
-
-target_link_libraries(ExtasisRhythm PRIVATE
     ExtasisRhythmData
     juce::juce_audio_utils
     juce::juce_dsp
     juce::juce_gui_extra
     juce::juce_opengl
-    juce::juce_recommended_config_flags
-    
+    PUBLIC juce::juce_recommended_config_flags
+    PUBLIC juce::juce_recommended_lto_flags
+    PUBLIC juce::juce_recommended_warning_flags
 )
 # Custom post-build step to guarantee installation and app icon
 if (APPLE)

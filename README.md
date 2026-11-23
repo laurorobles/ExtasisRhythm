@@ -1,56 +1,67 @@
-# Extasis Rhythm (v3.1.0)
+# Extasis Rhythm (v4.0.0 — Free & Open Source)
 
-**Extasis Rhythm** is a powerful, polyrhythmic, and vintage-flavored modular drum machine plugin (VST3 / Standalone) designed for modern music production. Inspired by the crunch of golden-era 12-bit samplers and the generative flexibility of modern sequencers, it provides unparalleled rhythm creation through a cutting-edge DSP engine.
+**Extasis Rhythm** is a **100% Free & Open Source (GNU GPLv3)** polyrhythmic, vintage-flavored modular drum machine plugin (VST3 / Standalone) designed for modern music production. Inspired by the crunch of golden-era 12-bit samplers and the generative flexibility of modern sequencers, it provides expressive rhythm creation through a custom C++/JUCE DSP engine.
 
-Whether you are producing Lo-Fi, House, Techno, or Hip-Hop, Extasis Rhythm gives you complete control over every element of your beat with a massive suite of built-in modules:
+Whether you are producing Lo-Fi, House, Techno, or Hip-Hop, Extasis Rhythm gives you complete control over every element of your beat with a full suite of built-in modules:
 
-* **🎛️ 12-Channel Modular Sampler:** Drag & drop your own `.wav` or `.aif` files directly onto any channel, or let the FFT Smart Engine automatically analyze and map an entire folder of samples. Features "Collect & Save" to instantly build your own custom kits.
-* **🧬 Polyrhythmic Sequencer:** 12 independent sequencer lanes with custom step lengths for Euclidean rhythms, 8 pattern slots, and a Smart Fill Memory (MPC / Pocket Operator style) that seamlessly returns to your groove.
+* **🎛️ 12-Channel Modular Sampler + Auto-Trim:** Drag & drop your own `.wav` or `.aif` files directly onto any channel, or let the FFT Smart Engine automatically analyze and map an entire folder of samples. Built-in **Smart Auto-Trim** detects and strips leading silence (with zero-crossing protection) so every drum hit lands tightly on the transient.
+* **🧬 Polyrhythmic Sequencer:** 12 independent sequencer lanes with custom step lengths for Euclidean rhythms, 8 pattern slots, per-step pitch/glide, and Smart Fill Memory (MPC / Pocket Operator style).
 * **🎚️ Advanced Channel Strips:** Sculpt each voice individually with Pitch, Tone, Attack, Decay, Pan, and dedicated FX Sends (Delay, Spring Reverb), along with clickless Mute/Solo.
 * **📼 Vintage FX Rack:** Authentic 12-Bit and 8-Bit PCM sample-rate reduction (SP-1200 style), classic analog Chorus, Flanger, syncable Bucket-Brigade Delay, and a vintage Spring Reverb module.
-* **🔥 Master Bus & Saturation:** Glue your mix together with a dedicated Overdrive/Distortion circuit, DJ-style Master HPF/LPF with resonance, Analog/Vinyl noise modes, Anti-Aliasing, and a built-in Master Clipper & Limiter.
-* **🫁 PUMP (Sidechain Ducking):** An organic, smooth master-bus envelope follower to give your beats that heavy, pumping sidechain compression effect instantly—no complex DAW routing required.
-* **🚀 Instant Drag-to-DAW Export:** Generate a perfect bounced loop in milliseconds! Just drag the 〰️ WAV icon directly from the plugin into your DAW's timeline or your Desktop.
+* **🔥 Master Bus & Saturation:** Glue your mix together with a dedicated Overdrive circuit, DJ-style Master HPF/LPF with resonance, Analog/Vinyl modes, Anti-Aliasing, and a Master Clipper & Limiter.
+* **🫁 PUMP (Envelope Ducking):** An organic, smooth master-bus envelope follower to add rhythmic pumping glue instantly—no complex DAW routing required.
+* **🚀 Instant Drag-to-DAW Export:** Generate a sample-accurate bounced loop in milliseconds! Just drag the `DRAG WAV` button directly into your DAW's timeline or your Desktop.
 
-## 🌟 What's New in Version 3.1.0
-* **Modular Sampler (Drag & Drop):** You can now drag and drop individual `.wav` or `.aif` files directly onto any of the 12 channels to build your custom drum kits on the fly.
-* **Drag to DAW (Offline Render):** Instantly export your current pattern! Simply click and drag the new 〰️ WAV button to your DAW's timeline (Ableton, FL Studio) or your Desktop to instantly bounce a 16-second loop.
-* **Collect & Save Custom Kits:** The new `COLLECT KIT` button gathers all your randomly dragged samples, organizes them, renames them, and permanently saves them to a new user preset folder.
-* **Robust Core Engine:** Implemented thread-safe `thread_local` memory locks for the UI and DSP threads, ensuring absolutely zero glitches or race conditions when doing offline renders or dragging files.
-* **FFT Smart Auto-Tagging:** Drop any chaotic folder of samples, and the plugin will use Spectral Centroid analysis to instantly recognize Kicks, Snares, and Hi-Hats.
-* **True 12-Bit Sample-and-Hold:** Authentic PCM sample-rate reduction algorithm mirroring the legendary E-mu SP-1200 crunch.
-* **Smooth Sidechain (PUMP):** Redesigned envelope follower (attack/release) for musical and organic master-bus ducking.
-* **Clickless Mutes:** Advanced smoothing envelopes for perfectly clean live muting and soloing.
+## 🌟 What's New in Version 4.0.0
+* **Free & Open Source (GNU GPLv3):** Completely free forever—no license keys, no demo timers, no restrictions.
+* **Smart Auto-Trim on Sample Load:** Automatically removes leading silence on every loaded or dragged sample while preserving the full attack transient.
+* **Upgraded Hardware GUI (60 FPS):** Luminous value arcs on all rotary knobs, metallic cap shading, double-click to reset defaults, 4-step beat grouping in the sequencer, dark hardware module headers, and glowing LEDs.
+* **DSP Routing Improvements:** True Kick-triggered **PUMP** sidechain (ducks percussion & FX returns while keeping the Kick punchy), dedicated Vinyl HPF filter, accurate post-gain Master Limiter ceiling (-0.2 dBFS), and transparent Overdrive bypass when Drive is at 0.
+* **Sample-Accurate Offline Drag-to-WAV:** Clean, feedback-free offline loop bouncing.
 
 ## 💾 Installation
 
-We provide pre-compiled binaries for **Windows**, **macOS**, and **Linux**. You don't need to compile any code!
+Pre-compiled binaries are available for **Windows**, **macOS**, and **Linux** on the [Releases](https://github.com/laurorobles/ExtasisRhythm/releases) page.
 
 ### macOS
-1. Go to the [Releases](https://github.com/laurorobles/ExtasisRhythm/releases) page and download `ExtasisRhythm-macOS.zip`.
+1. Download `ExtasisRhythm-macOS.zip` (or `ExtasisRhythm-macOS-con-Samples.zip`).
 2. Extract the ZIP.
 3. Move `ExtasisRhythm.vst3` to `/Library/Audio/Plug-Ins/VST3/`.
-4. (Optional) Run the Standalone `ExtasisRhythm.app` directly.
+4. (Optional) Move `ExtasisRhythm.app` to `/Applications/`.
 
-> **⚠️ macOS Gatekeeper Notice:** If macOS tells you the app is "Damaged" and should be moved to the Trash, this is a standard Apple security feature for indie plugins. Simply open the Terminal app, drag the `Fix_Mac_Error.command` file (included in the ZIP) into the Terminal window, and press **Enter**. This will safely bypass the quarantine and allow the plugin to run.
+> **⚠️ macOS Gatekeeper Notice:** If macOS warns that the app is "Damaged" or from an unidentified developer, open Terminal, drag `Fix_Mac_Error.command` (included in the ZIP) into the Terminal window, and press **Enter** to remove the quarantine attribute.
 
 ### Windows
-1. Go to the [Releases](https://github.com/laurorobles/ExtasisRhythm/releases) page and download `ExtasisRhythm-Windows.zip`.
-2. Extract the ZIP.
-3. Move `ExtasisRhythm.vst3` to `C:\Program Files\Common Files\VST3\`.
+1. Download `ExtasisRhythm-Windows.zip`.
+2. Extract the ZIP and move `ExtasisRhythm.vst3` to `C:\Program Files\Common Files\VST3\`.
 
 ### Linux
-1. Go to the [Releases](https://github.com/laurorobles/ExtasisRhythm/releases) page and download `ExtasisRhythm-Linux.zip`.
-2. Extract the ZIP and copy the `.vst3` directory to `~/.vst3/` or `/usr/lib/vst3/`.
+1. Download `ExtasisRhythm-Linux.zip`.
+2. Extract the ZIP and copy `ExtasisRhythm.vst3` to `~/.vst3/` or `/usr/lib/vst3/`.
 
-## 🎹 Quick Start
-* **Loading Kits:** Click the folder icon to select a directory, or simply Drag & Drop your own `.wav` files onto individual channels to build a modular kit. The Smart Engine handles the mapping.
-* **Sequencer:** Use the 16-step polyrhythmic sequencer. Adjust the lengths of each channel individually for generative Euclidean rhythms.
-* **DSP Rack:** Apply Filters, 12-bit crush, Overdrive, Reverb, Delay, and Master Pump (Sidechain) on the fly.
+## 🛠️ Building from Source
 
-## 📄 License & Activation
-Upon opening the plugin, you'll be prompted to enter a 16-character license key (e.g., `EXTR-XXXX-XXXX-XXXX-XXXX`).
-You can obtain your license key from our Gumroad page. The validation is **100% offline**, meaning you do not need an active internet connection to authorize or use the plugin.
+### Prerequisites
+- CMake 3.22+
+- A C++17 compiler (Xcode / Clang on macOS, Visual Studio 2022 on Windows, GCC/Clang on Linux)
+- Git (for the JUCE submodule)
+
+```bash
+git clone --recursive https://github.com/laurorobles/ExtasisRhythm.git
+cd ExtasisRhythm
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --parallel 4
+```
+
+On Ubuntu/Debian Linux, install the JUCE dependencies first:
+```bash
+sudo apt-get install -y libasound2-dev libx11-dev libxinerama-dev libxext-dev \
+  libfreetype6-dev libwebkit2gtk-4.0-dev libglu1-mesa-dev libjack-jackd2-dev libcurl4-openssl-dev
+```
+
+## 📄 License
+
+**Extasis Rhythm** is licensed under the **GNU General Public License v3.0 (GPLv3)**. See [LICENSE](LICENSE) for full details.
 
 ---
-*Created by Extasis Records*
+*Created by [@laurorobles](https://github.com/laurorobles) / Extasis Records*

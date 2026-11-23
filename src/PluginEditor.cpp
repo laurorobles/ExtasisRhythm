@@ -97,136 +97,90 @@ public:
     }
 };
 
-class EffectKnobLookAndFeel : public juce::LookAndFeel_V4
+class HardwareKnobLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
     void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
                            float rotaryStartAngle, float rotaryEndAngle, juce::Slider& slider) override
     {
-        auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat().reduced (2.0f);
-        auto radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) / 2.0f - 2.0f;
+        auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat().reduced (1.5f);
+        auto radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) / 2.0f - 1.5f;
         auto center = bounds.getCentre();
+        auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
+        bool isHovered = slider.isMouseOverOrDragging();
 
         juce::Colour knobCol = slider.findColour (juce::Slider::rotarySliderFillColourId);
+        if (isHovered) knobCol = knobCol.brighter (0.18f);
 
-        g.setColour (knobCol);
-        g.fillEllipse (center.x - radius, center.y - radius, radius * 2.0f, radius * 2.0f);
+        // 1. Subtle drop shadow for tactile hardware depth
+        g.setColour (juce::Colours::black.withAlpha (0.28f));
+        g.fillEllipse (center.x - radius + 0.8f, center.y - radius + 1.6f, radius * 2.0f, radius * 2.0f);
 
-        g.setColour (juce::Colours::white.withAlpha(0.85f));
-        int numTicks = 9;
-        for (int i = 0; i < numTicks; ++i)
+        // 2. Recessed outer ring background
+        float arcR = radius - 1.2f;
+        juce::Path trackArc;
+        trackArc.addCentredArc (center.x, center.y, arcR, arcR, 0.0f, rotaryStartAngle, rotaryEndAngle, true);
+        g.setColour (juce::Colour (0xff23272d));
+        g.strokePath (trackArc, juce::PathStrokeType (2.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+        // 3. Luminous active value arc
+        if (sliderPos > 0.002f)
         {
-            float fraction = (float)i / (float)(numTicks - 1);
-            float tickAngle = rotaryStartAngle + fraction * (rotaryEndAngle - rotaryStartAngle);
-            float outerR = radius - 1.0f;
-            float innerR = radius - 4.0f;
-            float x1 = center.x + innerR * std::sin (tickAngle);
-            float y1 = center.y - innerR * std::cos (tickAngle);
-            float x2 = center.x + outerR * std::sin (tickAngle);
-            float y2 = center.y - outerR * std::cos (tickAngle);
-            g.drawLine (x1, y1, x2, y2, 1.1f);
+            juce::Path valueArc;
+            valueArc.addCentredArc (center.x, center.y, arcR, arcR, 0.0f, rotaryStartAngle, angle, true);
+            g.setColour (knobCol);
+            g.strokePath (valueArc, juce::PathStrokeType (2.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         }
 
-        auto skirtRadius = radius - 4.0f;
-        g.setColour (juce::Colour (0xff222222));
+        // 4. Dark skirt body
+        auto skirtRadius = radius - 3.2f;
+        g.setColour (juce::Colour (0xff1d2025));
         g.fillEllipse (center.x - skirtRadius, center.y - skirtRadius, skirtRadius * 2.0f, skirtRadius * 2.0f);
 
-        auto capRadius = skirtRadius * 0.82f;
-        g.setColour (juce::Colour (0xffd0d0d0));
+        // 5. Metallic top cap with subtle gradient
+        auto capRadius = skirtRadius * 0.84f;
+        juce::ColourGradient capGrad (juce::Colour (isHovered ? 0xffe8ecf0 : 0xffdce0e5),
+                                      center.x - capRadius * 0.4f, center.y - capRadius * 0.5f,
+                                      juce::Colour (0xff9aa2ac),
+                                      center.x + capRadius * 0.5f, center.y + capRadius * 0.6f, false);
+        g.setGradientFill (capGrad);
         g.fillEllipse (center.x - capRadius, center.y - capRadius, capRadius * 2.0f, capRadius * 2.0f);
-        g.setColour (juce::Colour (0xff222222));
-        g.drawEllipse (center.x - capRadius, center.y - capRadius, capRadius * 2.0f, capRadius * 2.0f, 1.0f);
 
-        auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
+        g.setColour (juce::Colours::white.withAlpha (0.45f));
+        g.drawEllipse (center.x - capRadius, center.y - capRadius, capRadius * 2.0f, capRadius * 2.0f, 0.7f);
+
+        // 6. Crisp pointer needle
         juce::Path p;
-        
-        // Aguja extendida desde el centro hasta el anillo de color
-        p.addRoundedRectangle (-1.5f, -radius, 3.0f, radius + 2.0f, 1.0f);
+        p.addRoundedRectangle (-1.2f, -capRadius + 0.5f, 2.4f, capRadius * 0.78f, 1.0f);
         p.applyTransform (juce::AffineTransform::rotation (angle).translated (center));
 
-        g.setColour (juce::Colours::white);
+        g.setColour (juce::Colour (0xff15181c));
         g.fillPath (p);
-        g.setColour (juce::Colours::black.withAlpha(0.6f));
-        g.strokePath (p, juce::PathStrokeType(1.0f));
 
-        // Punto central sutil para anclar la aguja visualmente
-        g.setColour (juce::Colour (0xff222222));
-        g.fillEllipse (center.x - 3.0f, center.y - 3.0f, 6.0f, 6.0f);
+        // Subtle center pin
+        g.setColour (knobCol.withAlpha (isHovered ? 0.95f : 0.75f));
+        g.fillEllipse (center.x - 1.8f, center.y - 1.8f, 3.6f, 3.6f);
     }
-};
 
-class MasterChannelKnobLookAndFeel : public juce::LookAndFeel_V4
-{
-public:
-    void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
-                           float rotaryStartAngle, float rotaryEndAngle, juce::Slider& slider) override
+    void drawBubble (juce::Graphics& g, juce::BubbleComponent&, const juce::Point<float>&, const juce::Rectangle<float>& body) override
     {
-        auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat().reduced (2.0f);
-        auto radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) / 2.0f - 2.0f;
-        auto center = bounds.getCentre();
-
-        juce::Colour knobCol = slider.findColour (juce::Slider::rotarySliderFillColourId);
-
-        g.setColour (knobCol);
-        g.fillEllipse (center.x - radius, center.y - radius, radius * 2.0f, radius * 2.0f);
-
-        g.setColour (juce::Colours::white.withAlpha(0.85f));
-        int numTicks = 9;
-        for (int i = 0; i < numTicks; ++i)
-        {
-            float fraction = (float)i / (float)(numTicks - 1);
-            float tickAngle = rotaryStartAngle + fraction * (rotaryEndAngle - rotaryStartAngle);
-            float outerR = radius - 1.0f;
-            float innerR = radius - 4.0f;
-            float x1 = center.x + innerR * std::sin (tickAngle);
-            float y1 = center.y - innerR * std::cos (tickAngle);
-            float x2 = center.x + outerR * std::sin (tickAngle);
-            float y2 = center.y - outerR * std::cos (tickAngle);
-            g.drawLine (x1, y1, x2, y2, 1.1f);
-        }
-
-        auto skirtRadius = radius - 4.0f;
-        g.setColour (juce::Colour (0xff222222));
-        g.fillEllipse (center.x - skirtRadius, center.y - skirtRadius, skirtRadius * 2.0f, skirtRadius * 2.0f);
-
-        auto capRadius = skirtRadius * 0.82f;
-        g.setColour (juce::Colour (0xffd0d0d0));
-        g.fillEllipse (center.x - capRadius, center.y - capRadius, capRadius * 2.0f, capRadius * 2.0f);
-        g.setColour (juce::Colour (0xff222222));
-        g.drawEllipse (center.x - capRadius, center.y - capRadius, capRadius * 2.0f, capRadius * 2.0f, 1.0f);
-
-        auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
-        juce::Path p;
-        
-        // Aguja extendida desde el centro hasta el anillo de color
-        p.addRoundedRectangle (-1.5f, -radius, 3.0f, radius + 2.0f, 1.0f);
-        p.applyTransform (juce::AffineTransform::rotation (angle).translated (center));
-
-        g.setColour (juce::Colours::white);
-        g.fillPath (p);
-        g.setColour (juce::Colours::black.withAlpha(0.6f));
-        g.strokePath (p, juce::PathStrokeType(1.0f));
-
-        // Punto central sutil para anclar la aguja visualmente
-        g.setColour (juce::Colour (0xff222222));
-        g.fillEllipse (center.x - 3.0f, center.y - 3.0f, 6.0f, 6.0f);
+        g.setColour (juce::Colour (0xee161a20));
+        g.fillRoundedRectangle (body, 4.0f);
+        g.setColour (juce::Colour (0xff00d2ff).withAlpha (0.85f));
+        g.drawRoundedRectangle (body.reduced (0.5f), 4.0f, 1.0f);
     }
 };
 
 ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     : AudioProcessorEditor (&proc), audioProcessor (proc) 
 {
-    
-    
-
     setResizable (true, true); 
     getConstrainer()->setFixedAspectRatio (1192.0f / 812.0f);
     getConstrainer()->setMinimumSize (900, 612);
     getConstrainer()->setMaximumSize (1788, 1218);
     setWantsKeyboardFocus (true);
     
-    static EffectKnobLookAndFeel effectKnobLAF;
-    static MasterChannelKnobLookAndFeel masterChannelKnobLAF;
+    static HardwareKnobLookAndFeel hardwareKnobLAF;
     static CustomComboBoxLookAndFeel safeComboBoxLAF;
     static CompactButtonLookAndFeel compactBtnLAF;
     static BpmSliderLookAndFeel bpmSliderLAF;
@@ -652,23 +606,29 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     auto mkChannelKnob = [this] (juce::Slider& sl, std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>& at, const juce::String& id, juce::Colour col) {
         sl.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag); 
         sl.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0); 
-        sl.setLookAndFeel (&masterChannelKnobLAF); 
+        sl.setLookAndFeel (&hardwareKnobLAF); 
         sl.setPopupDisplayEnabled (true, true, this); 
         sl.setNumDecimalPlacesToDisplay (2);
+        sl.setMouseDragSensitivity (140);
         addAndMakeVisible (sl); 
         sl.setColour(juce::Slider::rotarySliderFillColourId, col);
         at = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, id, sl);
+        if (auto* p = dynamic_cast<juce::RangedAudioParameter*> (audioProcessor.apvts.getParameter (id)))
+            sl.setDoubleClickReturnValue (true, (double) p->convertFrom0to1 (p->getDefaultValue()));
     };
 
     auto mkEffectKnob = [this] (juce::Slider& sl, std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>& at, const juce::String& id, juce::Colour col) {
         sl.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag); 
         sl.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0); 
-        sl.setLookAndFeel (&effectKnobLAF); 
+        sl.setLookAndFeel (&hardwareKnobLAF); 
         sl.setPopupDisplayEnabled (true, true, this); 
         sl.setNumDecimalPlacesToDisplay (2);
+        sl.setMouseDragSensitivity (140);
         addAndMakeVisible (sl); 
         sl.setColour(juce::Slider::rotarySliderFillColourId, col);
         at = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, id, sl);
+        if (auto* p = dynamic_cast<juce::RangedAudioParameter*> (audioProcessor.apvts.getParameter (id)))
+            sl.setDoubleClickReturnValue (true, (double) p->convertFrom0to1 (p->getDefaultValue()));
     };
 
     mkChannelKnob (masterVolSlider, masterVolAtt, "masterVolume", juce::Colour (0xffe74c3c)); 
@@ -1192,65 +1152,11 @@ ExtasisRhythmEditor::ExtasisRhythmEditor (ExtasisRhythmProcessor& proc)
     cornerResizer = std::make_unique<juce::ResizableCornerComponent> (this, getConstrainer());
     addAndMakeVisible (cornerResizer.get()); 
 
-    // License & Registration UI
-    addAndMakeVisible (licenseBadgeButton);
-    licenseBadgeButton.setLookAndFeel (&compactBtnLAF);
-    updateLicenseState();
-    licenseBadgeButton.onClick = [this]() {
-        showActivationModal = !showActivationModal;
-        activationOverlay.statusLabel.setText ("", juce::dontSendNotification);
-        resized();
-        repaint();
-    };
-
-    addChildComponent (activationOverlay);
-    activationOverlay.onActivate = [this](const juce::String& key) {
-        if (LicenseManager::saveLicense (key))
-        {
-            updateLicenseState();
-            activationOverlay.statusLabel.setText ("License Activated Successfully! Welcome to Extasis Rhythm.", juce::dontSendNotification);
-            activationOverlay.statusLabel.setColour (juce::Label::textColourId, juce::Colour (0xff2ecc71));
-            juce::Timer::callAfterDelay (1000, [this]() {
-                showActivationModal = false;
-                resized();
-                repaint();
-            });
-        }
-        else
-        {
-            activationOverlay.statusLabel.setText ("Invalid Serial Key. Please check and try again.", juce::dontSendNotification);
-            activationOverlay.statusLabel.setColour (juce::Label::textColourId, juce::Colour (0xffff4444));
-        }
-    };
-    activationOverlay.onContinueDemo = [this]() {
-        showActivationModal = false;
-        resized();
-        repaint();
-    };
-
-    if (!isActivated)
-    {
-        showActivationModal = true;
-    }
-
     setSize (1192, 812); 
-    startTimerHz (30);
+    startTimerHz (60);
 }
 
 ExtasisRhythmEditor::~ExtasisRhythmEditor() = default;
-
-void ExtasisRhythmEditor::updateLicenseState()
-{
-    isActivated = LicenseManager::isLicensed();
-    audioProcessor.updateLicenseStatus();
-    licenseBadgeButton.setVisible (!isActivated);
-    if (!isActivated)
-    {
-        licenseBadgeButton.setButtonText ("ACTIVATE");
-        licenseBadgeButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffe67e22));
-        licenseBadgeButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
-    }
-}
 
 void ExtasisRhythmEditor::refreshKitSelectors()
 {
@@ -1277,11 +1183,13 @@ void ExtasisRhythmEditor::updateStepButtonVisuals (int ch, int step)
     auto* par = audioProcessor.apvts.getRawParameterValue ("step_" + juce::String(ch) + "_" + juce::String(step)); 
     if (par) { 
         int v = (int)(*par + 0.5f); 
+        // Alternating 4-step beat grouping (TR-808/909 style) for instant rhythm readability
+        juce::Colour offCol = ((step / 4) % 2 == 0) ? juce::Colour (0xffe5e8ec) : juce::Colour (0xffcfd5dc);
         juce::Colour cols[4] = { 
-            juce::Colour(0xffe0e0e0), 
-            juce::Colour(0xffffcc00), 
-            juce::Colour(0xffff6600), 
-            juce::Colour(0xffff0000) 
+            offCol, 
+            juce::Colour (0xfff5c542), // Soft hit (amber)
+            juce::Colour (0xffff7b1c), // Medium hit (vibrant orange)
+            juce::Colour (0xffe82c38)  // Accent hit (crimson red)
         }; 
         stepButtons[ch][step].setColour (juce::TextButton::buttonColourId, cols[v]); 
         
@@ -1399,23 +1307,6 @@ void ExtasisRhythmEditor::timerCallback()
         playButton.setButtonText (isPlaying ? "PLAYING" : "PLAY");
     }
 
-    if (!isActivated)
-    {
-        if (audioProcessor.demoExpired.load())
-        {
-            if (!showActivationModal || !activationOverlay.isExpired)
-            {
-                showActivationModal = true;
-                activationOverlay.isExpired = true;
-                activationOverlay.statusLabel.setText ("Demo time limit reached (10 min). Enter license key to continue.", juce::dontSendNotification);
-                activationOverlay.statusLabel.setColour (juce::Label::textColourId, juce::Colour (0xffff4444));
-                activationOverlay.setVisible (true);
-                activationOverlay.toFront (true);
-                resized();
-            }
-        }
-    }
-
     repaint(); 
 }
 
@@ -1425,39 +1316,39 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
     g.saveState(); 
     g.addTransform (juce::AffineTransform::scale (s));
     
-    g.fillAll (juce::Colour (0xffe6e6e6)); 
-    g.setColour (juce::Colour (0xffd4d4d4)); 
+    g.fillAll (juce::Colour (0xffe4e7eb)); 
+    juce::ColourGradient headerGrad (juce::Colour (0xffd5dae0), 0.0f, 0.0f, juce::Colour (0xffc8ced6), 0.0f, 180.0f, false);
+    g.setGradientFill (headerGrad);
     g.fillRect (0, 0, 1192, 180); 
-    g.setColour (juce::Colours::black.withAlpha (0.15f)); 
+    g.setColour (juce::Colours::black.withAlpha (0.18f)); 
     g.fillRect (0, 180, 1192, 4); 
 
-    // Título principal
-    g.setFont (juce::FontOptions (26.0f, juce::Font::bold)); 
-    g.setColour (juce::Colours::black.withAlpha(0.2f)); 
-    g.drawText ("ExtasisRhythm", 18, 16, 200, 30, juce::Justification::left); 
-    g.setColour (juce::Colour (0xff00d2ff)); 
-    g.drawText ("ExtasisRhythm", 16, 14, 200, 30, juce::Justification::left);
+    // Título principal con alto contraste
+    g.setFont (juce::FontOptions (25.0f, juce::Font::bold)); 
+    g.setColour (juce::Colour (0xff171b20)); 
+    g.drawText ("Extasis", 16, 13, 100, 30, juce::Justification::left); 
+    g.setColour (juce::Colour (0xff008cb8)); 
+    g.drawText ("Rhythm", 104, 13, 120, 30, juce::Justification::left); 
 
-    g.setFont (juce::FontOptions (11.0f, juce::Font::bold)); 
-    g.setColour (juce::Colour (0xff777777)); 
-    
-    // Subtítulo
-    g.setFont (juce::FontOptions (10.5f, juce::Font::bold)); 
-    g.setColour (juce::Colour (0xff444444)); 
-    g.drawText ("coded by @laurorobles", 17, 46, 200, 14, juce::Justification::left);
+    // Subtítulo & badge Open Source
+    g.setFont (juce::FontOptions (10.0f, juce::Font::bold)); 
+    g.setColour (juce::Colour (0xff48505a)); 
+    g.drawText ("coded by @laurorobles", 17, 45, 145, 14, juce::Justification::left);
 
-    // Logo (Redimensionado, alineado a la izquierda para un look más limpio)
+    g.setColour (juce::Colour (0xff1c232b));
+    g.fillRoundedRectangle (152.0f, 44.0f, 84.0f, 15.0f, 3.0f);
+    g.setFont (juce::FontOptions (8.5f, juce::Font::bold));
+    g.setColour (juce::Colour (0xff00d2ff));
+    g.drawText ("v4.0 OPEN", 152, 44, 84, 15, juce::Justification::centred);
+
+    // Logo (Redimensionado, alineado a la izquierda)
     if (logoImage.isValid())
     {
-        auto logoRect = juce::Rectangle<float> (17.0f, 72.0f, 200.0f, 94.0f);
+        auto logoRect = juce::Rectangle<float> (17.0f, 70.0f, 200.0f, 94.0f);
         auto placement = juce::RectanglePlacement::xLeft | juce::RectanglePlacement::yMid | juce::RectanglePlacement::onlyReduceInSize;
 
-        g.setColour (juce::Colours::black.withAlpha (0.25f));
+        g.setColour (juce::Colours::black.withAlpha (0.22f));
         g.drawImage (logoImage, logoRect.translated (2.0f, 3.0f), placement, true);
-
-        g.setColour (juce::Colours::white);
-        g.drawImage (logoImage, logoRect, placement, true);
-
         g.drawImage (logoImage, logoRect, placement, false);
     }
 
@@ -1467,16 +1358,35 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
     g.drawHorizontalLine (179, 0.0f, 1192.0f);
 
     auto drawModuleBox = [&g] (int x, int y, int w, int h, const juce::String& title, juce::Colour boxTint, bool showLed = false, bool ledState = false) {
+        g.setColour (juce::Colours::black.withAlpha (0.12f));
+        g.fillRoundedRectangle ((float)x + 1.0f, (float)y + 2.0f, (float)w, (float)h, 4.5f);
+
         g.setColour (boxTint); 
-        g.fillRoundedRectangle ((float)x, (float)y, (float)w, (float)h, 4.0f);
-        g.setColour (juce::Colours::black.withAlpha(0.2f)); 
-        g.drawRoundedRectangle ((float)x, (float)y, (float)w, (float)h, 4.0f, 1.0f);
-        g.setFont (juce::FontOptions (10.0f, juce::Font::bold)); 
-        g.setColour (juce::Colour (0xff111111)); 
-        g.drawText (title, x, y + 3, w, 14, juce::Justification::centred);
+        g.fillRoundedRectangle ((float)x, (float)y, (float)w, (float)h, 4.5f);
+
+        // Sleek dark hardware header strip
+        g.setColour (juce::Colour (0xff232830));
+        g.fillRoundedRectangle ((float)x, (float)y, (float)w, 17.0f, 4.5f);
+        g.fillRect ((float)x, (float)y + 11.0f, (float)w, 6.0f);
+
+        g.setColour (juce::Colours::black.withAlpha(0.28f)); 
+        g.drawRoundedRectangle ((float)x, (float)y, (float)w, (float)h, 4.5f, 1.0f);
+
+        g.setFont (juce::FontOptions (9.5f, juce::Font::bold)); 
+        g.setColour (juce::Colour (0xffeaf0f6)); 
+        g.drawText (title, x, y + 1, w, 15, juce::Justification::centred);
+
         if (showLed) { 
-            g.setColour (ledState ? juce::Colour (0xffcc0000) : juce::Colour (0xff555555)); 
-            g.fillEllipse ((float)(x + 7), (float)(y + 7), 5.5f, 5.5f); 
+            float lx = (float)(x + 7);
+            float ly = (float)(y + 6);
+            if (ledState) {
+                juce::ColourGradient ledGlow (juce::Colour (0xffff3b3b).withAlpha (0.75f), lx + 2.75f, ly + 2.75f,
+                                              juce::Colour (0xffff3b3b).withAlpha (0.0f), lx + 8.0f, ly + 2.75f, true);
+                g.setGradientFill (ledGlow);
+                g.fillEllipse (lx - 3.0f, ly - 3.0f, 11.5f, 11.5f);
+            }
+            g.setColour (ledState ? juce::Colour (0xffff3b3b) : juce::Colour (0xff555d66)); 
+            g.fillEllipse (lx, ly, 5.5f, 5.5f); 
         }
     };
 
@@ -1687,7 +1597,7 @@ void ExtasisRhythmEditor::paint (juce::Graphics& g)
             g.drawRoundedRectangle (curStepBounds, 3.0f, 2.0f);
         }
 
-        int fillAct = audioProcessor.fillSeqPos;
+        int fillAct = audioProcessor.fillSeqPos.load();
         int fillNumSteps = juce::jlimit(1, 16, (int) audioProcessor.apvts.getRawParameterValue("fillLength")->load());
         bool isFillFit = fillFitButton.getToggleState();
         int fillStepW = isFillFit ? (totalStepsWidth / fillNumSteps) : (totalStepsWidth / 16);
@@ -1709,13 +1619,6 @@ void ExtasisRhythmEditor::resized()
     auto sz = [s](int x, int y, int w, int h) { 
         return juce::Rectangle<int> ((int)((float)x*s), (int)((float)y*s), (int)((float)w*s), (int)((float)h*s)); 
     };
-
-    licenseBadgeButton.setBounds (sz (180, 42, 68, 16));
-
-    activationOverlay.setBounds (0, 0, getWidth(), getHeight());
-    activationOverlay.setVisible (showActivationModal);
-    if (showActivationModal)
-        activationOverlay.toFront (true);
 
     int rightMargin = 16;
     int masterW = 146;
@@ -1885,7 +1788,6 @@ void ExtasisRhythmEditor::resized()
     }
 
     int fillLen = (int) audioProcessor.apvts.getRawParameterValue ("fillLength")->load();
-    bool isFillFit = fillFitButton.getToggleState();
     int fixedStepWidthFill = gridAreaWidth / 16;
     int fillBtnW = juce::jmax (2, fixedStepWidthFill - 5);
 

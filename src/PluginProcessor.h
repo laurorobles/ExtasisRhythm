@@ -51,11 +51,6 @@ public:
     void setSamplesFolder (const juce::File& folder);
     static juce::File getConfigFile();
 
-    void updateLicenseStatus();
-    std::atomic<bool> isLicensedCached { false };
-    std::atomic<int64_t> demoSamplesElapsed { 0 };
-    std::atomic<bool> demoExpired { false };
-
     static int getChannelForMidiNote (int noteNum);
     static int getMidiNoteForChannel (int ch);
     static juce::String getMidiNoteNameForChannel (int ch);
@@ -120,7 +115,7 @@ public:
     int seqPingPos[12] = {};         
 
     std::atomic<int> fillSeqMode {0};
-    int fillSeqPos = 0;
+    std::atomic<int> fillSeqPos {0};
 
     int savedGlides[8][12][32];
     int savedNotes[8][12][32]; 
@@ -130,15 +125,12 @@ public:
     std::atomic<int> currentMappedStep[12];
 
 private:
-    uint64_t samplesProcessed = 0;
+    void loadSampleFromFile (int ch, const juce::File& file, const juce::String& displayName);
 
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioFormatManager formatManager;
 
-    double currentSampleRate = 44100.0;
     int currentSamplesPerBlock = 512;
-    int transportSampleCounter = 0;
-    int globalStepCounter = -1;
     bool isInitialized = false;
     juce::Random random;
 
@@ -163,6 +155,7 @@ private:
     juce::dsp::StateVariableTPTFilter<float> kickHpfL, kickHpfR, otherHpfL, otherHpfR;
     juce::dsp::StateVariableTPTFilter<float> kickLpfL, kickLpfR, otherLpfL, otherLpfR;
     juce::dsp::StateVariableTPTFilter<float> kickRatLpfL, kickRatLpfR, otherRatLpfL, otherRatLpfR;
+    juce::dsp::StateVariableTPTFilter<float> vinylHpfL, vinylHpfR;
     
     juce::dsp::StateVariableTPTFilter<float> delayFeedbackLpfL, delayFeedbackLpfR;
     juce::dsp::StateVariableTPTFilter<float> springToneFilterL, springToneFilterR;

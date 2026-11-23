@@ -45,8 +45,8 @@ INNER_EOF
 
     # 4. Crear el INSTALL.txt explicando esto
     cat << 'INNER_EOF' > "$TARGET_DIR/INSTALL.txt"
-EXTASIS RHYTHM v3.1.0 — macOS Installation
-==========================================
+EXTASIS RHYTHM v4.0.0 (Free & Open Source) — macOS Installation
+===============================================================
 
 ⚠️ IMPORTANTE: SI MAC DICE QUE LA APP "ESTÁ DAÑADA" ⚠️
 Apple bloquea los plugins descargados de internet (Gatekeeper).

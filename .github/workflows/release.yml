@@ -88,14 +88,18 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*.zip
-          name: Extasis Rhythm ${{ github.ref_name }}
+          name: Extasis Rhythm ${{ github.ref_name }} (Free & Open Source)
           body: |
-            ## 🚀 Extasis Rhythm ${{ github.ref_name }}
+            ## 🚀 Extasis Rhythm ${{ github.ref_name }} — Free & Open Source Edition (GPLv3)
 
-            ### ✨ Highlights
-            * **Fixed Drag to WAV Export:** Completely resolved sample re-trigger and feedback issues during offline bouncing. Exported audio loops are crisp, punchy, and sample-accurate.
-            * **Smart Fill Memory:** Retains step state seamlessly across dynamic pattern transitions.
-            * **Cross-Platform Release:** Native binaries for macOS (Apple Silicon / Intel Universal), Windows (x64 VST3 + Standalone), and Linux (x64 VST3 + Standalone).
+            **Extasis Rhythm is now 100% Free & Open Source!** No license keys, no demo timers, no restrictions.
+
+            ### ✨ What's New
+            * **100% Free & Open Source (GNU GPLv3):** Removed all licensing checks and demo limitations.
+            * **Smart Auto-Trim on Sample Load:** Automatically detects and trims leading silence (with zero-crossing protection) on every loaded or dragged sample so drum hits always land tightly on the grid.
+            * **Upgraded Hardware GUI (60 FPS):** Luminous value arcs on rotary knobs, metallic cap shading, double-click to reset defaults, 4-step beat grouping in the sequencer, dark hardware module headers, and glowing LEDs.
+            * **DSP Routing Improvements:** True Kick-triggered **PUMP** sidechain (ducks percussion & FX returns while keeping the Kick untouched), dedicated Vinyl HPF filter, true post-gain Master Limiter ceiling (-0.2 dBFS), and transparent Overdrive bypass when Drive is at 0.
+            * **Cross-Platform Release:** Native binaries for macOS, Windows (x64 VST3 + Standalone), and Linux (x64 VST3 + Standalone).
 
             ---
             **Installation:** Extract the ZIP for your platform and drop the `.vst3` into your DAW's plugin folder (or launch the Standalone app).
