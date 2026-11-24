@@ -12,9 +12,11 @@ rm -rf ~/Desktop/ExtasisRhythm-macOS ~/Desktop/ExtasisRhythm-macOS-con-Samples
 preparar_carpeta() {
     local TARGET_DIR=$1
     
-    # 1. Crear Documentación
-    mkdir -p "$TARGET_DIR/Documentation"
-    cp MANUAL.md README.md TECHNICAL.md "$TARGET_DIR/Documentation/"
+    # 1. Crear Documentación e Installer
+    mkdir -p "$TARGET_DIR/Documentation" "$TARGET_DIR/installer"
+    cp LICENSE MANUAL.md README.md TECHNICAL.md "$TARGET_DIR/Documentation/"
+    cp installer/INSTALL_MAC.command "$TARGET_DIR/installer/"
+    chmod +x "$TARGET_DIR/installer/INSTALL_MAC.command"
     
     # 2. Copiar App y VST3
     cp -R build_release/ExtasisRhythm_artefacts/Release/VST3/ExtasisRhythm.vst3 "$TARGET_DIR/"

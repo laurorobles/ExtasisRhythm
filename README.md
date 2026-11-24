@@ -25,19 +25,15 @@ Pre-compiled binaries are available for **Windows**, **macOS**, and **Linux** on
 
 ### macOS
 1. Download `ExtasisRhythm-macOS.zip` (or `ExtasisRhythm-macOS-con-Samples.zip`).
-2. Extract the ZIP.
-3. Move `ExtasisRhythm.vst3` to `/Library/Audio/Plug-Ins/VST3/`.
-4. (Optional) Move `ExtasisRhythm.app` to `/Applications/`.
-
-> **⚠️ macOS Gatekeeper Notice:** If macOS warns that the app is "Damaged" or from an unidentified developer, open Terminal, drag `Fix_Mac_Error.command` (included in the ZIP) into the Terminal window, and press **Enter** to remove the quarantine attribute.
+2. Extract the ZIP and run `installer/INSTALL_MAC.command` (automatically installs VST3 + Standalone and clears macOS Gatekeeper quarantine).
 
 ### Windows
 1. Download `ExtasisRhythm-Windows.zip`.
-2. Extract the ZIP and move `ExtasisRhythm.vst3` to `C:\Program Files\Common Files\VST3\`.
+2. Extract the ZIP, right-click `installer/INSTALL_WINDOWS.bat` and select **Run as administrator**.
 
 ### Linux
 1. Download `ExtasisRhythm-Linux.zip`.
-2. Extract the ZIP and copy `ExtasisRhythm.vst3` to `~/.vst3/` or `/usr/lib/vst3/`.
+2. Extract the ZIP and run `installer/INSTALL_LINUX.sh`.
 
 ## 🛠️ Building from Source
 
